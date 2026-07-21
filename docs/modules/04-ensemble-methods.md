@@ -250,7 +250,7 @@ Even with ρ=0.5, you still get 45% variance reduction. This explains why Random
     RF (100):    Mean=0.891, Std=0.025
     ```
 
-    **Interpretation:** Across 20 different data splits, Random Forest achieves 8 percentage points higher accuracy AND 22% lower variance. The ensemble is both more accurate and more stable than any single tree.
+    **Interpretation:** Across 20 different data splits, Random Forest achieves 8 percentage points higher accuracy AND 22% lower standard deviation (a 40% lower variance). The ensemble is both more accurate and more stable than any single tree.
 
     *Source: `computations/module4_examples.py` — `demo_rf_vs_single_tree()`*
 

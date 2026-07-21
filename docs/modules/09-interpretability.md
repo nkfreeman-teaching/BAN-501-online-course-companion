@@ -154,7 +154,7 @@ Notice that this summary makes no mention of random forests, SHAP, or cross-vali
     - Recent spending $250 (some investment)
 
     RECOMMENDED ACTIONS:
-    1. Customer success outreach within 48 hours
+    1. Customer success outreach within 24 hours
     2. Resolve open support tickets immediately
     3. Offer annual contract incentive
     ```

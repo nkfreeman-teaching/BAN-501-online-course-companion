@@ -43,8 +43,9 @@ In the diagram, the vertical axis shows test error (higher is worse), and the ho
 
     ```python
     import numpy as np
-    from sklearn.preprocessing import PolynomialFeatures
+    from sklearn.preprocessing import PolynomialFeatures, StandardScaler
     from sklearn.linear_model import LinearRegression
+    from sklearn.pipeline import make_pipeline
     from sklearn.metrics import mean_squared_error
 
     # True function: quadratic with noise
@@ -58,12 +59,17 @@ In the diagram, the vertical axis shows test error (higher is worse), and the ho
     y_train, y_test = y[:35], y[35:]
 
     for degree in [1, 2, 3, 5, 8, 12, 15]:
-        poly = PolynomialFeatures(degree=degree)
-        X_train_poly = poly.fit_transform(X_train)
-        X_test_poly = poly.transform(X_test)
-        model = LinearRegression().fit(X_train_poly, y_train)
-        train_mse = mean_squared_error(y_train, model.predict(X_train_poly))
-        test_mse = mean_squared_error(y_test, model.predict(X_test_poly))
+        # Standardize the polynomial features: raw powers of x span many orders
+        # of magnitude (an ill-conditioned Vandermonde matrix), so scaling keeps
+        # the high-degree least-squares fit numerically stable.
+        model = make_pipeline(
+            PolynomialFeatures(degree=degree),
+            StandardScaler(),
+            LinearRegression(),
+        )
+        model.fit(X_train, y_train)
+        train_mse = mean_squared_error(y_train, model.predict(X_train))
+        test_mse = mean_squared_error(y_test, model.predict(X_test))
         # Record results...
     ```
 
@@ -134,59 +140,62 @@ To build intuition, imagine fitting a curve through 10 points. With exactly 10 p
 >
 > Think of it this way: you need to get from A to B (fit the training data). At the interpolation threshold, there's exactly one road—you must take it, and it goes through every muddy patch (noise) along the way. But in the overparameterized regime, there are thousands of roads. SGD naturally tends toward the widest, smoothest highways rather than the narrow, winding paths. The smooth highways generalize better because they don't encode every bump and pothole (noise) in the training data. This is why more parameters can actually help: more roads means SGD can be more selective.
 
-!!! example "Numerical Example: Double Descent in Random Features"
+!!! example "Numerical Example: Double Descent in Min-Norm Regression"
 
     ```python
     import numpy as np
-    from sklearn.linear_model import Ridge
     from sklearn.metrics import mean_squared_error
 
-    # Setup: 100 training points, varying number of random features
-    n_train, n_test = 100, 1000
-    np.random.seed(42)
+    # Fixed sample size; vary the number of features p the model may use.
+    n_train = 100
+    p_max = 900        # true signal lives in a high-dimensional space
+    k_signal = 140     # dimensions carrying real signal
+    snr = 5.0          # squared norm of the true coefficient vector
+    noise = 0.4
+    n_trials = 40      # average over random draws to smooth the curve
 
-    # True function: y = sin(x) + noise
-    X_train = np.random.randn(n_train, 1)
-    y_train = np.sin(3 * X_train.ravel()) + 0.3 * np.random.randn(n_train)
-    X_test = np.random.randn(n_test, 1)
-    y_test = np.sin(3 * X_test.ravel())
+    # Straddle p = n (skip exactly 100) so the interpolation peak stays finite
+    feature_counts = [10, 25, 45, 65, 80, 95, 105, 130, 175, 250, 400, 700]
+    for p in feature_counts:
+        errors = []
+        for trial in range(n_trials):
+            rng = np.random.RandomState(trial)
+            beta = np.zeros(p_max)
+            beta[:k_signal] = rng.randn(k_signal)
+            beta *= np.sqrt(snr) / np.linalg.norm(beta)
 
-    # Random Fourier features to increase complexity
-    def random_features(X, n_features, seed=0):
-        np.random.seed(seed)
-        W = np.random.randn(X.shape[1], n_features)
-        b = np.random.uniform(0, 2*np.pi, n_features)
-        return np.cos(X @ W + b)
+            X_train = rng.randn(n_train, p_max)
+            y_train = X_train @ beta + noise * rng.randn(n_train)
+            X_test = rng.randn(3000, p_max)
+            y_test = X_test @ beta  # noise-free target
 
-    # Vary number of features from 10 to 2000
-    feature_counts = [10, 50, 80, 100, 120, 200, 500, 1000, 2000]
-    # Fit ridge regression with tiny regularization
-    for n_feat in feature_counts:
-        Phi_train = random_features(X_train, n_feat)
-        Phi_test = random_features(X_test, n_feat)
-        model = Ridge(alpha=1e-8)
-        model.fit(Phi_train, y_train)
-        test_mse = mean_squared_error(y_test, model.predict(Phi_test))
+            # Minimum-norm least squares using the first p features
+            coef, *_ = np.linalg.lstsq(X_train[:, :p], y_train, rcond=None)
+            errors.append(mean_squared_error(y_test, X_test[:, :p] @ coef))
+        test_mse = np.mean(errors)
         # Record test MSE...
     ```
 
     **Output:**
 
     ```
-      Features    Ratio to n    Test MSE         Regime
-    --------------------------------------------------------
-            10         0.10       0.342      Underparameterized
-            50         0.50       0.089      Underparameterized
-            80         0.80       0.052      Underparameterized
-           100         1.00       0.487      Interpolation peak!
-           120         1.20       0.156      Just overparameterized
-           200         2.00       0.067      Overparameterized
-           500         5.00       0.041      Overparameterized
-          1000        10.00       0.038      Overparameterized
-          2000        20.00       0.035      Overparameterized
+    Features     Ratio to n   Test MSE     Regime
+    -------------------------------------------------------------
+    10           0.10         5.195        Underparameterized
+    25           0.25         5.493        Underparameterized
+    45           0.45         6.666        Underparameterized
+    65           0.65         8.422        Underparameterized
+    80           0.80         11.500       Underparameterized
+    95           0.95         39.075       Interpolation peak!
+    105          1.05         31.221       Interpolation peak!
+    130          1.30         2.986        Overparameterized
+    175          1.75         2.342        Overparameterized
+    250          2.50         3.101        Overparameterized
+    400          4.00         3.789        Overparameterized
+    700          7.00         4.294        Overparameterized
     ```
 
-    **Interpretation:** Test error peaks at 100 features (the interpolation threshold, where features = samples). As we add more features, error *decreases*—the second descent. With 2000 features (20× the data), we get lower error than the classical sweet spot.
+    **Interpretation:** Test error climbs through the underparameterized regime and peaks sharply at the interpolation threshold (features ≈ samples), where the model is forced to fit the noise. Push well past the threshold and error descends again—the second descent—reaching a minimum (2.34 at *p/n* = 1.75) that beats the best underparameterized model (5.20). That is the surprise: beyond the interpolation peak, adding parameters helps rather than hurts. (At very large *p*, error creeps back up toward the signal variance—the linear model has no more signal to recover.)
 
     *Source: `computations/deep_dive_surprising_phenomena_examples.py` — `demo_double_descent_random_features()`*
 
@@ -293,14 +302,14 @@ Weight decay tips the balance between these two strategies. Without regularizati
     ```
        Epoch     Train Acc     Test Acc       Phase
     ------------------------------------------------
-         100        100.0%        3.2%       Memorized
-        1000        100.0%        3.4%       Memorized
-        5000        100.0%        4.1%       Memorized
-       10000        100.0%        8.7%       Starting...
-       15000        100.0%       23.4%       Transition
-       20000        100.0%       67.8%       Grokking!
-       25000        100.0%       98.2%       Almost there
-       30000        100.0%      100.0%       Full generalization
+         100        100.0%        2.1%       Memorized
+        1000        100.0%        3.9%       Memorized
+        5000        100.0%        3.2%       Memorized
+       10000        100.0%       10.0%       Starting...
+       15000        100.0%       35.0%       Transition
+       20000        100.0%       70.0%       Grokking!
+       25000        100.0%       82.5%       Grokking!
+       30000        100.0%       95.0%       Almost there
     ```
 
     **Interpretation:** The network hits 100% training accuracy by epoch 100, but test accuracy stays near random (1/97 ≈ 1%) for thousands of epochs. Around epoch 10,000-25,000, generalization suddenly improves. Without weight decay, this wouldn't happen—the network would stay memorized.
@@ -406,13 +415,13 @@ In 2023, Schaeffer and colleagues published a counterargument: **emergent abilit
     ```
       Scale    Per-Step Acc    Exact Match      Appearance
     ---------------------------------------------------------
-          5          11.2%           0.0%      Both low
+          5          11.9%           0.0%      Both low
           7          26.9%           0.1%      Gradual vs flat
           9          50.0%           3.1%      Gradual vs flat
-         10          62.2%           9.2%      Gradual vs jump
-         11          73.1%          20.8%      Gradual vs jump
-         13          88.1%          52.8%      Gradual vs jump
-         15          95.3%          78.3%      Both high
+         10          62.2%           9.3%      Gradual vs jump
+         11          73.1%          20.9%      Gradual vs jump
+         13          88.1%          53.0%      Both high
+         15          95.3%          78.4%      Both high
     ```
 
     **Interpretation:** Per-step accuracy improves gradually and smoothly. But exact match (requiring all 5 steps correct) shows a sharp transition. Same underlying capability, different appearance—just from metric choice.

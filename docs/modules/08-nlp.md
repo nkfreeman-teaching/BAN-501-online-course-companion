@@ -890,7 +890,7 @@ Several factors favor fine-tuning BERT: (i) task-specific performance, since fin
       BERT-base: ~1x
       BERT-large: ~3x
       GPT-2 XL: ~14x
-      GPT-3: ~1591x
+      GPT-3: ~1600x
     ```
 
     **Interpretation:** GPT-3 is ~1,600x more expensive to run than BERT-base. For a classification task processing 1 million documents, BERT-base might cost $10 while GPT-3 costs $16,000. This is why production systems often use fine-tuned BERT for tasks where it performs well—the cost difference is dramatic.

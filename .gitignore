@@ -12,6 +12,9 @@ __pycache__/
 # Marimo caches
 __marimo__/
 
+# Computation-verification artifacts (regenerable via `pixi run -e compute verify`)
+computations/_verify/
+
 # OS / editor cruft
 .DS_Store
 *.swp

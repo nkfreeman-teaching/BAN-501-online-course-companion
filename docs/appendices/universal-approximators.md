@@ -222,9 +222,9 @@ The following example compares sklearn's logistic regression with an equivalent 
     ```
                          sklearn      PyTorch
     ------------------------------------------
-     x1 coefficient     108.4445       9.4888
-     x2 coefficient     216.0017      18.5272
-          intercept     -53.9592      -4.4948
+     x1 coefficient     108.4925       9.4888
+     x2 coefficient     216.1004      18.5272
+          intercept     -53.9849      -4.4948
 
     Accuracy:  sklearn=1.0000, PyTorch=0.9990
     Coefficient ratio (x2/x1): sklearn=1.99, PyTorch=1.95
