@@ -59,7 +59,7 @@ Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds the site
 1. **Edit content** in `docs/` (modules in `docs/modules/`, deep dives in `docs/appendices/`, images in `docs/assets/`).
 2. If you change a numerical example, **re-verify**: `pixi run -e compute verify` (and `pixi run -e compute figures` if a figure changed).
 3. **Preview:** `pixi run serve`.
-4. **Add a `CHANGELOG.md` entry** describing the change.
+4. **Add a `CHANGELOG.md` entry** describing the change (edit the root `CHANGELOG.md`; the in-site `docs/changelog.md` page renders it automatically via a snippet include, so there is only one file to update).
 5. **Commit and push** to `main` — GitHub Actions rebuilds and redeploys.
 
 ### Content conventions
