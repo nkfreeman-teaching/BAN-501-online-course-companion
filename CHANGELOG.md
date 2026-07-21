@@ -60,3 +60,5 @@ against code before publication.
 - **Numerical stability.** The bias–variance and double-descent demos were made reproducible
   across current library versions (a scaled polynomial pipeline; a well-conditioned min-norm
   setup) so their tables and figures no longer drift with scikit-learn/NumPy updates.
+
+[1.0.0]: https://github.com/nkfreeman-teaching/BAN-501-online-course-companion/releases/tag/v1.0.0
