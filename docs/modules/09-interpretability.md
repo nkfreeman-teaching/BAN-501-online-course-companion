@@ -8,7 +8,7 @@ A bank denies someone a loan. A hospital's AI recommends a treatment. An insuran
 
 This module bridges the gap between model performance and real-world deployment. You'll learn how to explain any model—black box or not—and how to communicate those explanations to stakeholders who don't know (or care) about gradient descent.
 
-Modern tools narrow, but do not eliminate, the tradeoff between interpretability and performance. Train a complex model for maximum performance, then use post-hoc explanation methods (SHAP, LIME, PDP) to attribute predictions to features under stated assumptions — you get useful attributions, not a guarantee that the model has been "fully understood." Intrinsically interpretable models (linear regression, short decision trees) provide explanations directly when regulations require it, and a well-regularized linear model can often match tree-ensemble performance on tabular problems. Section 9.2 covers the specific tools and the assumptions each one rests on; Section 9.4 catalogs where post-hoc explanations can mislead.
+Modern tools narrow, but do not eliminate, the tradeoff between interpretability and performance. Train a complex model for maximum performance, then use post-hoc explanation methods (SHAP, LIME, PDP) to attribute predictions to features under stated assumptions — you get useful attributions, not a guarantee that the model has been "fully understood." Intrinsically interpretable models (linear regression, short decision trees) provide explanations directly when regulations require it, and a well-regularized linear model can often match tree-ensemble performance on tabular problems. Section 9.2 covers the specific tools, the assumptions each one rests on, and where post-hoc explanations can mislead.
 
 ---
 
@@ -271,32 +271,34 @@ For a final analysis, permutation importance on test data is generally preferred
 !!! example "Numerical Example: Permutation Importance Step by Step"
 
     ```python
-    # Dataset: x1 (strong signal), x2 (correlated with x1, moderate true effect),
-    #          x3 (pure noise)
-    # Target depends on: 2*x1 + 0.5*x2, not on x3
+    # Dataset: x1 (real signal), x2 (redundant proxy: r = 0.95 with x1),
+    #          x3 (pure noise). Target depends on x1 ONLY, so x2 carries the
+    #          SAME signal redundantly.
+    np.random.seed(42)
+    n = 2000
+    x1 = np.random.randn(n)
+    x2 = 0.95 * x1 + np.sqrt(1 - 0.95**2) * np.random.randn(n)   # r = 0.95
+    x3 = np.random.randn(n)
+    y = (np.random.rand(n) < 1 / (1 + np.exp(-2 * x1))).astype(int)
 
-    # Train Random Forest and measure baseline accuracy
-    baseline_accuracy = 0.647  # 64.7%
-
-    # Shuffle each feature and measure performance drop
-    # x1 (strong): shuffle → accuracy drops to 40.0%  → importance = +24.7%
-    # x2 (correlated): shuffle → accuracy rises to 70.7% → importance = -6.0%
-    # x3 (noise):  shuffle → accuracy rises to 66.0% → importance = -1.3%
-
-    importance_x1 = 0.647 - 0.400  # = +0.247 (large positive: x1 is important)
-    importance_x2 = 0.647 - 0.707  # = -0.060 (negative: shuffling actually helped)
-    importance_x3 = 0.647 - 0.660  # = -0.013 (near-zero: model ignores x3)
+    # Baseline test accuracy = 73.7%. Shuffle each feature (mean of 30 repeats):
+    importance_x1 = 0.737 - 0.558  # = +0.179 (large: the model relies on x1)
+    importance_x2 = 0.737 - 0.741  # = -0.004 (~0: proxy — x1 compensates!)
+    importance_x3 = 0.737 - 0.751  # = -0.015 (~0: pure noise)
     ```
 
     **Output:**
 
     ```
-    x1 (strong):      Importance = +24.7%  ← critical feature
-    x2 (correlated):  Importance =  -6.0%  ← negative (see explanation)
-    x3 (noise):       Importance =  -1.3%  ← near-zero as expected
+    Correlation between x1 and its proxy x2: r = 0.95
+    Baseline accuracy on test set: 73.7%
+
+    x1 (signal):        Importance = +17.9%   ← the model relies on it
+    x2 (proxy, r=0.95): Importance =  -0.4%   ← ~0 despite 95% correlation!
+    x3 (noise):         Importance =  -1.5%   ← ~0 (carries no signal)
     ```
 
-    **Interpretation:** Shuffling x1 destroys the main signal, causing a 24.7% accuracy drop. x2's importance is *negative*—this happens because x2 is correlated with x1 (r ≈ 0.96). When the model was trained, it used both x1 and x2 as proxies for the same signal. On this finite test set, shuffling x2 sometimes *reduces* redundant confounding, giving the model a cleaner signal from x1 alone. Negative permutation importance means the feature was not helping (and may have been adding noise at the margin on this sample). Treat values near zero, whether slightly positive or slightly negative, as "not important." x3's near-zero value confirms the model correctly ignored it.
+    **Interpretation:** Shuffling x1 destroys the main signal, so accuracy falls about 17.9 points—x1 is genuinely important. The striking result is x2: it is 95% correlated with the signal, yet its permutation importance is essentially zero (−0.4%). When x2 is shuffled, the model simply falls back on its untouched near-twin x1, so accuracy barely moves. This is the **redundancy trap**: permutation importance under-credits correlated features, because a shuffled feature's information still leaks in through its correlated partners. Note that x2 (redundant) and x3 (pure noise) both look unimportant, but for opposite reasons—dropping x2 loses nothing *only because x1 remains*, whereas x3 never carried signal at all. Before trusting an importance ranking, group or cluster correlated features (or shuffle them together); and treat small values near zero, positive or negative, as "not individually important."
 
     *Source: `computations/module9_examples.py` — `demo_permutation_importance()`*
 
@@ -319,7 +321,7 @@ PartialDependenceDisplay.from_estimator(
 
 When reading a PDP, an upward slope means higher feature values lead to higher predictions, a flat line indicates little average effect, and a non-linear shape reveals a complex relationship.
 
-One limitation is that PDPs assume feature independence, which can produce impossible combinations (20-year-olds with $500K income). Individual Conditional Expectation (ICE) plots address this limitation by showing one line per observation, revealing heterogeneous effects that PDP averages away. Where a PDP shows one smooth "average" curve, an ICE plot shows a bundle of curves—one per row in the dataset. If those curves fan out or cross, the feature's effect differs across subgroups, and the PDP average is hiding meaningful variation.
+PDPs have two distinct limitations. First, they assume feature independence, so the counterfactual grid can produce impossible combinations (20-year-olds with $500K income); fixing *that* requires methods that respect the data distribution, such as accumulated local effects (ALE) or conditional PDPs. Second, a PDP averages over all observations, which hides heterogeneous effects. Individual Conditional Expectation (ICE) plots address this *second* limitation by showing one line per observation, revealing effects that the PDP average washes out. (ICE uses the same counterfactual substitutions as a PDP, so it does not fix the impossible-combinations problem.) Where a PDP shows one smooth "average" curve, an ICE plot shows a bundle of curves—one per row in the dataset. If those curves fan out or cross, the feature's effect differs across subgroups, and the PDP average is hiding meaningful variation.
 
 ```python
 # ICE plot: kind="individual" shows one line per sample

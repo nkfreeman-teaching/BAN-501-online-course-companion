@@ -2,15 +2,19 @@
 
 Maps every `demo_*` function in `computations/` to its numerical-example
 admonition in the online course companion (`docs/`). Regenerated 2026-07-21
-after the Phase 2 port and the Phase 3 computation verification.
+after the Phase 2 port, the Phase 3 computation verification, and the Phase 5
+Codex review (which rewrote `demo_permutation_importance` and
+`demo_bias_variance_tradeoff` and hardened `verify_all.py`).
 
 ## Summary
 
 - **17 computation files** containing **98 demo functions**
 - **19 companion pages** (`docs/`: 10 modules + 8 deep-dive appendices + Q&A)
 - Every function is referenced by exactly one `!!! example` admonition whose
-  `*Source:*` line cites it; all 98 outputs verified against code
-  (`pixi run -e compute verify` -> 98/98 clean).
+  `*Source:*` line cites it. Verification (`pixi run -e compute verify`): **97/98**
+  numerically verified (78 exact PASS + 19 documented prose/formatting
+  adjudications), 1 qualitative example with no numbers, 0 unexplained flags,
+  0 errors.
 
 ---
 
@@ -104,23 +108,23 @@ after the Phase 2 port and the Phase 3 computation verification.
 | Function | Docs Page | Example | Line |
 |----------|-----------|---------|------|
 | `demo_permutation_importance` | docs/modules/09-interpretability.md | Numerical Example: Permutation Importance Step by Step | 271 |
-| `demo_partial_dependence` | docs/modules/09-interpretability.md | Numerical Example: Building a Partial Dependence Plot | 337 |
-| `demo_shapley_game` | docs/modules/09-interpretability.md | Numerical Example: Shapley Values in a Simple Game | 390 |
-| `demo_shap_sum_to_prediction` | docs/modules/09-interpretability.md | Numerical Example: SHAP Values Sum to Prediction | 468 |
-| `demo_shap_summary_interpretation` | docs/modules/09-interpretability.md | Numerical Example: Reading a SHAP Summary Plot | 513 |
-| `demo_lime_perturbation` | docs/modules/09-interpretability.md | Numerical Example: LIME Perturbation in Action | 572 |
-| `demo_shap_vs_permutation` | docs/modules/09-interpretability.md | Numerical Example: SHAP vs Permutation Importance | 625 |
+| `demo_partial_dependence` | docs/modules/09-interpretability.md | Numerical Example: Building a Partial Dependence Plot | 339 |
+| `demo_shapley_game` | docs/modules/09-interpretability.md | Numerical Example: Shapley Values in a Simple Game | 392 |
+| `demo_shap_sum_to_prediction` | docs/modules/09-interpretability.md | Numerical Example: SHAP Values Sum to Prediction | 473 |
+| `demo_shap_summary_interpretation` | docs/modules/09-interpretability.md | Numerical Example: Reading a SHAP Summary Plot | 518 |
+| `demo_lime_perturbation` | docs/modules/09-interpretability.md | Numerical Example: LIME Perturbation in Action | 577 |
+| `demo_shap_vs_permutation` | docs/modules/09-interpretability.md | Numerical Example: SHAP vs Permutation Importance | 630 |
 | `demo_shap_to_business` | docs/modules/09-interpretability.md | Numerical Example: From SHAP to Business English | 117 |
 
 ### module10_examples.py (5 functions)
 
 | Function | Docs Page | Example | Line |
 |----------|-----------|---------|------|
-| `demo_fairness_metrics` | docs/modules/10-ethics-deployment.md | Numerical Example: Calculating Fairness Metrics by Hand | 213 |
+| `demo_fairness_metrics` | docs/modules/10-ethics-deployment.md | Numerical Example: Calculating Fairness Metrics by Hand | 217 |
 | `demo_impossibility_theorem` | docs/modules/10-ethics-deployment.md | Numerical Example: Impossibility Theorem in Action | 145 |
-| `demo_proxy_variable_correlation` | docs/modules/10-ethics-deployment.md | Numerical Example: Detecting Proxy Variables | 259 |
-| `demo_roi_sensitivity_analysis` | docs/modules/10-ethics-deployment.md | Numerical Example: ROI Sensitivity Analysis | 645 |
-| `demo_ab_test_sample_size` | docs/modules/10-ethics-deployment.md | Numerical Example: A/B Test Sample Size Calculation | 573 |
+| `demo_proxy_variable_correlation` | docs/modules/10-ethics-deployment.md | Numerical Example: Detecting Proxy Variables | 263 |
+| `demo_roi_sensitivity_analysis` | docs/modules/10-ethics-deployment.md | Numerical Example: ROI Sensitivity Analysis | 649 |
+| `demo_ab_test_sample_size` | docs/modules/10-ethics-deployment.md | Numerical Example: A/B Test Sample Size Calculation | 577 |
 
 ### deep_dive_data_prep_examples.py (2 functions)
 
@@ -166,14 +170,14 @@ after the Phase 2 port and the Phase 3 computation verification.
 
 | Function | Docs Page | Example | Line |
 |----------|-----------|---------|------|
-| `demo_positional_encoding` | docs/appendices/transformer-architecture.md | Numerical Example: Positional Encoding Values | 258 |
+| `demo_positional_encoding` | docs/appendices/transformer-architecture.md | Numerical Example: Positional Encoding Values | 260 |
 | `demo_embedding_lookup` | docs/appendices/transformer-architecture.md | Numerical Example: Embedding Lookup | 53 |
-| `demo_scaling_effect` | docs/appendices/transformer-architecture.md | Numerical Example: Scaling Effect on Softmax | 425 |
-| `demo_attention_scores` | docs/appendices/transformer-architecture.md | Numerical Example: Attention Scores Step by Step | 484 |
-| `demo_multihead_reshape` | docs/appendices/transformer-architecture.md | Numerical Example: Multi-Head Reshape | 367 |
+| `demo_scaling_effect` | docs/appendices/transformer-architecture.md | Numerical Example: Scaling Effect on Softmax | 427 |
+| `demo_attention_scores` | docs/appendices/transformer-architecture.md | Numerical Example: Attention Scores Step by Step | 486 |
+| `demo_multihead_reshape` | docs/appendices/transformer-architecture.md | Numerical Example: Multi-Head Reshape | 369 |
 | `demo_ffn_forward` | docs/appendices/transformer-architecture.md | Numerical Example: FFN Forward Pass | 133 |
 | `demo_layer_norm` | docs/appendices/transformer-architecture.md | Numerical Example: Layer Normalization | 185 |
-| `demo_causal_masking` | docs/appendices/transformer-architecture.md | Numerical Example: Causal Masking | 765 |
+| `demo_causal_masking` | docs/appendices/transformer-architecture.md | Numerical Example: Causal Masking | 767 |
 
 ### deep_dive_universal_approx_examples.py (7 functions)
 
@@ -184,22 +188,21 @@ after the Phase 2 port and the Phase 3 computation verification.
 | `demo_logistic_regression_equiv` | docs/appendices/universal-approximators.md | Numerical Example: sklearn vs PyTorch Logistic Regression | 194 |
 | `demo_relu_bump_construction` | docs/appendices/universal-approximators.md | Numerical Example: ReLU Bump Construction | 330 |
 | `demo_step_approximation` | docs/appendices/universal-approximators.md | Numerical Example: Step Function Approximation | 290 |
-| `demo_polynomial_approximation` | docs/appendices/universal-approximators.md | Numerical Example: Learning x² with ReLU Networks | 393 |
-| `demo_width_vs_accuracy` | docs/appendices/universal-approximators.md | Numerical Example: Width vs Accuracy Trade-off | 467 |
+| `demo_polynomial_approximation` | docs/appendices/universal-approximators.md | Numerical Example: Learning x² with ReLU Networks | 392 |
+| `demo_width_vs_accuracy` | docs/appendices/universal-approximators.md | Numerical Example: Width vs Accuracy Trade-off | 466 |
 
 ### deep_dive_surprising_phenomena_examples.py (7 functions)
 
 | Function | Docs Page | Example | Line |
 |----------|-----------|---------|------|
 | `demo_bias_variance_tradeoff` | docs/appendices/surprising-phenomena.md | Numerical Example: Bias-Variance Tradeoff with Polynomial Regression | 42 |
-| `demo_double_descent_random_features` | docs/appendices/surprising-phenomena.md | Numerical Example: Double Descent in Min-Norm Regression | 143 |
-| `demo_interpolation_threshold_peak` | docs/appendices/surprising-phenomena.md | Numerical Example: The Interpolation Threshold Up Close | 203 |
-| `demo_grokking_simulation` | docs/appendices/surprising-phenomena.md | Numerical Example: Grokking on Modular Addition | 268 |
-| `demo_weight_norm_evolution` | docs/appendices/surprising-phenomena.md | Numerical Example: Weight Norm Evolution | 320 |
-| `demo_emergence_metric_mirage` | docs/appendices/surprising-phenomena.md | Numerical Example: Metric Choice and Apparent Emergence | 385 |
-| `demo_phase_transitions_comparison` | docs/appendices/surprising-phenomena.md | Numerical Example: Comparing Phase Transitions | 462 |
+| `demo_double_descent_random_features` | docs/appendices/surprising-phenomena.md | Numerical Example: Double Descent in Min-Norm Regression | 147 |
+| `demo_interpolation_threshold_peak` | docs/appendices/surprising-phenomena.md | Numerical Example: The Interpolation Threshold Up Close | 207 |
+| `demo_grokking_simulation` | docs/appendices/surprising-phenomena.md | Numerical Example: Grokking on Modular Addition | 272 |
+| `demo_weight_norm_evolution` | docs/appendices/surprising-phenomena.md | Numerical Example: Weight Norm Evolution | 324 |
+| `demo_emergence_metric_mirage` | docs/appendices/surprising-phenomena.md | Numerical Example: Metric Choice and Apparent Emergence | 389 |
+| `demo_phase_transitions_comparison` | docs/appendices/surprising-phenomena.md | Numerical Example: Comparing Phase Transitions | 466 |
 
 ---
 
 _Total demo functions mapped: 98._
-

@@ -46,24 +46,28 @@ In the diagram, the vertical axis shows test error (higher is worse), and the ho
     from sklearn.preprocessing import PolynomialFeatures, StandardScaler
     from sklearn.linear_model import LinearRegression
     from sklearn.pipeline import make_pipeline
+    from sklearn.model_selection import train_test_split
     from sklearn.metrics import mean_squared_error
 
     # True function: quadratic with noise
     np.random.seed(42)
-    X = np.random.uniform(-3, 3, 50).reshape(-1, 1)
+    X = np.random.uniform(-3, 3, 500).reshape(-1, 1)
     y_true = 0.5 * X.ravel()**2 - X.ravel() + 1
-    y = y_true + np.random.randn(50) * 0.5
+    y = y_true + np.random.randn(500) * 0.5
 
-    # Split and fit polynomials of increasing degree
-    X_train, X_test = X[:35], X[35:]
-    y_train, y_test = y[:35], y[35:]
+    # Hold out a LARGE test set (70%): a stable test-error estimate lets the
+    # true degree 2 win, while the smaller training set still lets high degrees
+    # overfit.
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.7, random_state=42
+    )
 
     for degree in [1, 2, 3, 5, 8, 12, 15]:
         # Standardize the polynomial features: raw powers of x span many orders
         # of magnitude (an ill-conditioned Vandermonde matrix), so scaling keeps
         # the high-degree least-squares fit numerically stable.
         model = make_pipeline(
-            PolynomialFeatures(degree=degree),
+            PolynomialFeatures(degree=degree, include_bias=False),
             StandardScaler(),
             LinearRegression(),
         )
@@ -78,16 +82,16 @@ In the diagram, the vertical axis shows test error (higher is worse), and the ho
     ```
     Degree     Train MSE    Test MSE     Regime
     ------------------------------------------------------
-    1          2.1182       1.8187       Underfitting (high bias)
-    2          0.2128       0.1968       Sweet spot
-    3          0.2109       0.1974       Slight overfitting
-    5          0.2050       0.1808       Slight overfitting
-    8          0.1592       0.2805       Overfitting (high var)
-    12         0.1267       0.3458       Overfitting (high var)
-    15         0.1249       0.3610       Overfitting (high var)
+    1          2.0282       2.0760       Underfitting (high bias)
+    2          0.2166       0.2658       Sweet spot
+    3          0.2132       0.2723       Slight overfitting
+    5          0.2130       0.2736       Slight overfitting
+    8          0.2084       0.2782       Overfitting (high var)
+    12         0.2073       0.2784       Overfitting (high var)
+    15         0.1888       0.2867       Overfitting (high var)
     ```
 
-    **Interpretation:** Test error follows the U-curve. Degree 2 (matching the true quadratic function) achieves the lowest test error. Higher degrees drive training error down but test error *up*—the classic signature of overfitting.
+    **Interpretation:** Test error follows the U-curve. Degree 2 (matching the true quadratic function) achieves the lowest test error, 0.2658; degree 3 is a hair behind because a cubic essentially contains the quadratic, so the two are near-tied at the bottom of the U. From there test error climbs steadily even as training error keeps falling (2.0282 → 0.1888)—the classic signature of overfitting: the model spends its extra flexibility memorizing training noise it cannot generalize.
 
     *Source: `computations/deep_dive_surprising_phenomena_examples.py` — `demo_bias_variance_tradeoff()`*
 
@@ -221,16 +225,16 @@ To build intuition, imagine fitting a curve through 10 points. With exactly 10 p
     30         0.60       1.2311
     40         0.80       3.6692
     45         0.90       6.1485       Near threshold
-    48         0.96       6.6199       Near threshold
-    50         1.00       4.9464       <<< PEAK: exactly n features
+    48         0.96       6.6199       <<< PEAK: highest test error
+    50         1.00       4.9464       p = n (interpolation threshold)
     52         1.04       3.9456       Near threshold
     55         1.10       2.8352       Descending...
     60         1.20       2.6002       Descending...
-    80         1.60       5.5102       Descending...
+    80         1.60       5.5102
     100        2.00       1.6794       Descending...
     ```
 
-    **Interpretation:** The peak in test error occurs right at or near the interpolation threshold (features = samples). Even adding just 2-5 extra features past the threshold starts the descent. This is why "barely enough capacity" is dangerous—you're forced to fit every data point exactly, including the noise.
+    **Interpretation:** The peak in test error sits right around the interpolation threshold—here at p=48, just shy of features = samples = 50. Pushing past the threshold starts the descent (p=52 through p=60 all fall), though on a single noisy draw the overparameterized region is bumpy rather than perfectly monotone (note the temporary rise at p=80). This is why "barely enough capacity" is dangerous—near the threshold you are forced to fit every training point exactly, noise included.
 
     *Source: `computations/deep_dive_surprising_phenomena_examples.py` — `demo_interpolation_threshold_peak()`*
 

@@ -171,7 +171,7 @@ print(classification_report(y_test, y_pred))
 
 ## Cross-Validation
 
-A single train/test split can be lucky or unlucky. Cross-validation addresses this by providing (i) a more reliable performance estimate, (ii) a confidence interval (mean ± standard deviation), and (iii) the ability to use all data for both training and validation.
+A single train/test split can be lucky or unlucky. Cross-validation addresses this by providing (i) a more reliable performance estimate, (ii) a measure of its variability (the spread of scores across folds), and (iii) the ability to use all data for both training and validation.
 
 ### K-Fold Cross-Validation
 
@@ -226,7 +226,7 @@ The procedure involves four steps. First, split the data into K folds (K=5 shown
     5-fold CV: 75.0% ± 6.3%
     ```
 
-    **Interpretation:** A single random split could report anywhere from 57.5% to 87.5%—a 30 percentage point range depending on luck. Cross-validation reports 75.0% ± 6.3%, giving both an estimate and a confidence interval. The CV mean is close to the true average across all possible splits.
+    **Interpretation:** A single random split could report anywhere from 57.5% to 87.5%—a 30 percentage point range depending on luck. Cross-validation reports 75.0% ± 6.3%, giving both an estimate and a sense of its fold-to-fold variability (the ± is the standard deviation across folds, which describes spread, not a formal confidence interval—the fold estimates are not independent). The CV mean is close to the true average across all possible splits.
 
     *Source: `computations/deep_dive_evaluation_examples.py` — `demo_cv_variance_reduction()`*
 

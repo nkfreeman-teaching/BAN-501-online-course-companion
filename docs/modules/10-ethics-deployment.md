@@ -140,43 +140,47 @@ Which is worse depends on context. In criminal justice, high FPR means innocent 
 
 #### Why the Impossibility Exists
 
-Imagine you try to fix Group B's higher FPR by raising the threshold (being more conservative with "yes" predictions). This reduces false positives, but it also reduces true positives—now qualified people in Group B are less likely to be approved. You have traded one unfairness for another. The only way both could be equal simultaneously is if both groups have the same base rate (same proportion of qualified people)—which is often not the case in the real world due to historical inequalities. This forces a *choice*, not a calculation.
+The clash is between two families of criteria. *Equalized odds* fixes the error rates the decision-maker controls (equal TPR and equal FPR across groups); *predictive parity* fixes what a "yes" prediction means (equal precision across groups). When the base rates differ, these cannot both hold. Precision is tied to the base rate through Bayes' rule: for a fixed TPR and FPR, a group with a smaller share of true positives ends up with lower precision, because a larger fraction of the "yes" predictions land on negatives. So if you force TPR and FPR to match across groups, precision must diverge; and if you force precision (and TPR) to match, the false-positive rates must diverge. The only escapes are equal base rates or a perfect classifier. This forces a *choice*, not a calculation (Chouldechova, 2017; Kleinberg, Mullainathan, and Raghavan, 2016).
 
 !!! example "Numerical Example: Impossibility Theorem in Action"
 
     ```python
-    # Two groups with different base rates
-    # Group A: 60% positive, Group B: 30% positive
+    # Two groups with DIFFERENT base rates (prevalence of the positive class)
+    p_A, p_B = 0.60, 0.30
 
-    # Starting point: same threshold for both
-    # Group A: TPR=90%, FPR=20%
-    # Group B: TPR=80%, FPR=20%
+    def precision(tpr, fpr, prevalence):
+        # P(actually positive | predicted positive), by Bayes' rule
+        tp = tpr * prevalence
+        fp = fpr * (1 - prevalence)
+        return tp / (tp + fp)
 
-    # ATTEMPT 1: Equalize TPR (lower threshold for B)
-    # Group B now: TPR=90% (equal!), but FPR jumps to 30%
-    print("After equalizing TPR:")
-    print("  Group A: TPR=90%, FPR=20%")
-    print("  Group B: TPR=90%, FPR=30%")  # FPR now 1.5x higher!
+    # Enforce EQUALIZED ODDS: identical TPR and FPR for both groups
+    tpr, fpr = 0.80, 0.20
+    print(f"A precision: {precision(tpr, fpr, p_A):.1%}")   # 85.7%
+    print(f"B precision: {precision(tpr, fpr, p_B):.1%}")   # 63.2%
 
-    # ATTEMPT 2: Equalize FPR (raise threshold for B)
-    # Group B now: FPR=20% (equal!), but TPR drops to 70%
-    print("After equalizing FPR:")
-    print("  Group A: TPR=90%, FPR=20%")
-    print("  Group B: TPR=70%, FPR=20%")  # TPR now 22% lower!
+    # Converse (Chouldechova's identity): fix precision + TPR, and FPR diverges
+    #   FPR = (p / (1 - p)) * ((1 - PPV) / PPV) * (1 - FNR)
+    def fpr_needed(prevalence, ppv=0.75, fnr=0.20):
+        return (prevalence / (1 - prevalence)) * ((1 - ppv) / ppv) * (1 - fnr)
+    print(f"A FPR: {fpr_needed(p_A):.1%}")   # 40.0%
+    print(f"B FPR: {fpr_needed(p_B):.1%}")   # 11.4%
     ```
 
     **Output:**
 
     ```
-    After equalizing TPR:
-      Group A: TPR=90%, FPR=20%
-      Group B: TPR=90%, FPR=30%
-    After equalizing FPR:
-      Group A: TPR=90%, FPR=20%
-      Group B: TPR=70%, FPR=20%
+    Suppose we enforce EQUALIZED ODDS (identical TPR and FPR for both):
+       Group   Base rate     TPR     FPR    Precision
+    ------------------------------------------------
+           A         60%     80%     20%        85.7%
+           B         30%     80%     20%        63.2%
+
+    Conversely, forcing equal precision (75%) and equal TPR (80%):
+      Group A FPR = 40.0%     Group B FPR = 11.4%
     ```
 
-    **Interpretation:** You cannot have both equal opportunity (equal TPR) and equal protection (equal FPR) when base rates differ. Equalizing TPR means more false accusations for Group B; equalizing FPR means fewer qualified Group B members are approved. This is the impossibility theorem in action—a mathematical constraint, not a technical failure.
+    **Interpretation:** With identical TPR and FPR (equalized odds), the two groups still get different precision—85.7% vs 63.2%—purely because their base rates differ (60% vs 30%). Turn it around and force equal precision plus equal TPR, and the false-positive rates split apart (40.0% vs 11.4%). You cannot have equal TPR, equal FPR, *and* equal precision at once unless the base rates match. This is the impossibility theorem (Chouldechova, 2017): a mathematical constraint, not a modeling failure. Deciding *which* fairness criterion to honor is an ethical judgment about your specific context.
 
     *Source: `computations/module10_examples.py` — `demo_impossibility_theorem()`*
 
@@ -640,7 +644,7 @@ Note: This calculation assumes interventions are only applied to true positives.
 
 The key is to quantify business impact, not just accuracy. "95% accuracy" means nothing to a CFO, but "$630,000 net value in year one" does.
 
-One important adjustment is often omitted from back-of-the-envelope ROI calculations: false positives consume resources too. In the example above, the model flags 7,500 customers for intervention (the 2,250 true positives plus 5,250 false positives). Each flagged customer incurs the $50 intervention cost regardless of whether they were actually going to churn. The calculation accounts for this, but many informal ROI estimates treat intervention cost as if it were applied only to true positives—which overstates net value. When presenting an ROI calculation, make the false positive cost explicit: show how many customers will be flagged in total, how many of those flags will be correct, and how much you are spending on incorrect flags. Stakeholders who understand the math will ask about this, and having the answer ready builds credibility.
+One important adjustment is often omitted from back-of-the-envelope ROI calculations: in a real deployment the model also flags some customers who were **not** going to churn (false positives), and each of those unnecessary interventions still costs money. The simplified example above sidesteps this by assuming every flagged customer is a true churner: of the 7,500 detected churners (75% of 10,000), 2,250 are successfully retained and 5,250 are not, but no cost is charged for flagging non-churners. A production estimate must add the intervention cost spent on false positives, which lowers the true ROI. When presenting an ROI calculation, make this explicit: show how many customers will be flagged in total, how many of those flags will be correct, and how much you are spending on incorrect flags. Stakeholders who understand the math will ask about this, and having the answer ready builds credibility.
 
 !!! example "Numerical Example: ROI Sensitivity Analysis"
 
@@ -688,7 +692,7 @@ Before you can quantify ROI, you need to get the project approved. Non-technical
 
 **Lead with the conservative scenario.** Present the pessimistic ROI first. If the business case holds under conservative assumptions, the upside of the base and optimistic scenarios becomes a bonus. Stakeholders who feel they were given the honest downside are more likely to trust the rest of your analysis.
 
-**Translate metrics into decisions.** Never leave technical metrics unexplained. Instead of "the model achieves 0.85 AUC," say "of every 100 customers who are genuinely about to churn, the model identifies 75 in time to intervene." Precision matters too: tell them how many false alarms the intervention team will chase. Give them a picture of what a day or week of operating the system looks like in practice.
+**Translate metrics into decisions.** Never leave technical metrics unexplained, and keep distinct metrics distinct. "The model ranks a random churner above a random non-churner 85% of the time" explains AUC (a ranking measure); "at the threshold we plan to deploy, it catches 75 of every 100 customers who are genuinely about to churn" explains recall. AUC alone does not pin down that recall number—recall depends on the operating threshold you choose. Precision matters too: tell them how many false alarms the intervention team will chase for each real catch. Give them a picture of what a day or week of operating the system looks like in practice.
 
 **Address risk proactively.** List what could go wrong: model drift, data pipeline failures, regulatory scrutiny, reputational risk if the model makes a newsworthy mistake. For each risk, describe the mitigation. Stakeholders who are not told about risks will imagine worse ones—or discover them after approval and lose trust in you.
 

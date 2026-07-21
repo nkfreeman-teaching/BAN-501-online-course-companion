@@ -127,11 +127,13 @@ def _match_one(value: float, decimals: int, is_sci: bool, stdout_vals) -> bool:
         return any(abs(v - value) <= tol for v in stdout_vals)
     target = round(value, decimals)
     step = 10 ** (-decimals)
-    for v in stdout_vals:
-        # exact at book precision, or off-by-one in the last displayed digit
-        if abs(round(v, decimals) - target) <= 1.0001 * step:
-            return True
-    return False
+    # EXACT match at the book's displayed precision: round each stdout value to
+    # the book's decimals and require equality. No last-digit slack -- a book
+    # number that differs by a full displayed unit is a real mismatch, not a
+    # match (that slack could otherwise let a wrong number, e.g. book 71 vs
+    # stdout 70, pass silently). Prose-derived numbers that legitimately do not
+    # appear in stdout are documented explicitly in ADJUDICATED instead.
+    return any(abs(round(v, decimals) - target) < 0.5 * step for v in stdout_vals)
 
 
 def book_number_found(value, decimals, stdout_vals, is_pct=False, is_sci=False) -> bool:
@@ -258,8 +260,9 @@ def run_all():
 # ---------------------------------------------------------------------------
 ADJUDICATED = {
     ("deep_dive_cnn_examples.py", "demo_fc_vs_cnn_parameters"): {
-        "tokens": {"150"},
-        "reason": "'150 million' prose rounding of the printed 150,529,000",
+        "tokens": {"150", "84000"},
+        "reason": "'150 million' prose rounding of printed 150,529,000; '~84,000x' prose "
+                  "rounding of the printed exact ratio 84,001x",
     },
     ("deep_dive_cnn_examples.py", "demo_pooling_dimensions"): {
         "tokens": {"50176", "49", "512"},
@@ -270,12 +273,29 @@ ADJUDICATED = {
         "reason": "'nearly 50,000x' prose rounding of the printed exact 49,284x",
     },
     ("deep_dive_data_prep_examples.py", "demo_feature_scaling_impact"): {
-        "tokens": {"170000"},
-        "reason": "nominal design range $170,000 (=200k-30k) in prose; code prints the sampled range 167,525",
+        "tokens": {"170000", "50"},
+        "reason": "nominal design ranges stated in prose: income $170,000 (=200k-30k) and age "
+                  "50 years (=70-20); code prints the sampled ranges (167,525 / ~49)",
     },
     ("deep_dive_surprising_phenomena_examples.py", "demo_grokking_simulation"): {
-        "tokens": {"97"},
-        "reason": "'1/97' modular-arithmetic base referenced in prose",
+        "tokens": {"97", "1"},
+        "reason": "prose random-chance baseline 'test accuracy near random (1/97 ~ 1%)': the "
+                  "1/97 fraction and the ~1% both come from p=97, not from the trajectory table",
+    },
+    ("deep_dive_imbalanced_examples.py", "demo_precision_recall_threshold"): {
+        "tokens": {"71", "91"},
+        "reason": "prose arithmetic in the interpretation: '71% of positive predictions wrong' "
+                  "= 100 - 29 (precision at 0.1); 'miss 91% of actual positives' = 100 - 9 (recall at 0.7)",
+    },
+    ("deep_dive_transformer_examples.py", "demo_positional_encoding"): {
+        "tokens": {"7"},
+        "reason": "'dim6-7' prose dimension index (d_model=8); the 8 encoding values per "
+                  "position are printed, not the index",
+    },
+    ("module6_examples.py", "demo_backprop_by_hand"): {
+        "tokens": {"-1"},
+        "reason": "the '-1' in the derivative formula 'dL/dy_pred = -1/y_pred'; the computed "
+                  "result -1.9231 is printed",
     },
     ("deep_dive_timeseries_examples.py", "demo_time_series_decomposition"): {
         "tokens": {"46000", "43000", "64000", "70000"},
@@ -318,12 +338,8 @@ ADJUDICATED = {
         "tokens": {"6000"},
         "reason": "'~6,000 positions' prose approximation of printed wavelength 6283.2",
     },
-    ("module9_examples.py", "demo_permutation_importance"): {
-        "tokens": {"0.96"},
-        "reason": "'r ~ 0.96' correlation stated in prose for the didactic hand-worked example",
-    },
     ("module9_examples.py", "demo_shap_sum_to_prediction"): {
-        "tokens": {"0.301", "0.086", "4", "3"},
+        "tokens": {"0.301", "0.086", "4", "3", "2"},
         "reason": "book prints +/- in a separate column ('feature_2  -  0.301'); values match with sign. "
                   "'features 2 and 3', 'Feature 4' are prose indices",
     },
@@ -345,7 +361,7 @@ def main():
     missing_in_code = sorted(doc_keys - run_keys)
 
     report_lines = []
-    n_pass = n_flag = n_err = n_adj = 0
+    n_pass = n_flag = n_err = n_adj = n_nonum = 0
     flagged = []
 
     for key in sorted(run_keys | doc_keys):
@@ -365,6 +381,16 @@ def main():
             continue
 
         nums, book_inf = book_numbers_for(ex["body"])
+
+        # Qualitative examples carry no numbers to check. Report them as
+        # NO-NUMS rather than silently awarding an (unverifiable) PASS.
+        if not nums and not book_inf:
+            n_nonum += 1
+            report_lines.append(
+                f"[NO-NUMS ] {fname} :: {func}  (qualitative example, no numbers to verify)"
+            )
+            continue
+
         stdout_vals = stdout_number_set(stdout)
         not_found = []
         for tok, val, dec, is_pct, is_sci in nums:
@@ -408,8 +434,11 @@ def main():
         f"- functions run: {len(results)}",
         f"- admonitions in docs: {len(examples)}",
         f"- PASS: {n_pass}   ADJUDICATED (prose/formatting, verified): {n_adj}"
+        f"   NO-NUMS (qualitative): {n_nonum}"
         f"   UNEXPLAINED FLAG: {n_flag}   ERROR: {n_err}",
-        f"- clean = PASS + ADJUDICATED = {n_pass + n_adj} / {len(results)}",
+        f"- verified = PASS + ADJUDICATED = {n_pass + n_adj}; "
+        f"qualitative (no numbers) = {n_nonum}; "
+        f"clean (no FLAG/ERROR) over {len(results)} = {n_flag == 0 and n_err == 0}",
         f"- keys run but no admonition: {missing_in_docs}",
         f"- admonitions but no code: {missing_in_code}",
         "",
@@ -423,9 +452,11 @@ def main():
     print("\n".join(report_lines))
     print()
     print("=" * 70)
-    print(f"PASS={n_pass}  ADJUDICATED={n_adj}  UNEXPLAINED FLAG={n_flag}  "
-          f"ERROR={n_err}  (of {len(results)} functions)")
-    print(f"clean (PASS+ADJUDICATED) = {n_pass + n_adj}/{len(results)}")
+    print(f"PASS={n_pass}  ADJUDICATED={n_adj}  NO-NUMS={n_nonum}  "
+          f"UNEXPLAINED FLAG={n_flag}  ERROR={n_err}  (of {len(results)} functions)")
+    print(f"verified (PASS+ADJUDICATED) = {n_pass + n_adj}/{len(results)}  "
+          f"| qualitative (no numbers) = {n_nonum}  "
+          f"| clean (no FLAG/ERROR) = {n_flag == 0 and n_err == 0}")
     if missing_in_docs:
         print(f"Ran but no admonition matched: {missing_in_docs}")
     if missing_in_code:

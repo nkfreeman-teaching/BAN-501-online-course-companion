@@ -188,14 +188,16 @@ Layer norm matters because without it, activations grow or shrink exponentially 
     import torch
 
     x = torch.tensor([[10.0, 20.0, 30.0, 40.0]])  # Varying magnitudes
-    print(f"Input: {x[0].numpy()}, mean={x.mean():.1f}, std={x.std():.1f}")
+    # Layer norm uses the population std (correction=0), matching the variance
+    # used to normalize below; torch's default std() would use the sample form.
+    print(f"Input: {x[0].numpy()}, mean={x.mean():.1f}, std={x.std(correction=0):.1f}")
 
     # Normalize to mean=0, std=1
     mean = x.mean(dim=-1, keepdim=True)
-    std = torch.sqrt(x.var(dim=-1, unbiased=False, keepdim=True) + 1e-6)
+    std = torch.sqrt(x.var(dim=-1, correction=0, keepdim=True) + 1e-6)
     x_norm = (x - mean) / std
     print(f"Normalized: {x_norm[0].numpy().round(4)}")
-    print(f"New mean={x_norm.mean():.6f}, std={x_norm.std():.4f}")
+    print(f"New mean={x_norm.mean():.6f}, std={x_norm.std(correction=0):.4f}")
 
     # Apply learned scale (γ) and shift (β)
     gamma = torch.tensor([1.0, 2.0, 0.5, 1.5])
@@ -243,7 +245,7 @@ This section explains the motivation behind each major component of the transfor
 
 ### Why Positional Encoding?
 
-The core problem is that self-attention is **permutation-invariant**. Without position information, "Dog bites man," "Man bites dog," and "Bites man dog" would be identical to the model. The attention mechanism only cares about *what* tokens are present and their relationships, not *where* they appear.
+The core problem is that self-attention is **permutation-equivariant**: permuting the input tokens permutes the outputs in exactly the same way and changes nothing else. Because each token's output then depends only on *which* tokens are present and their content-based relationships, not *where* they sit, "Dog bites man," "Man bites dog," and "Bites man dog" produce the same set of representations and are indistinguishable to the model. (True permutation *invariance*—identical output regardless of order—only arises after an order-agnostic pooling step; attention itself is equivariant, which is why position must be injected explicitly.)
 
 #### Sinusoidal Positional Encoding
 

@@ -122,112 +122,64 @@ def demo_fairness_metrics():
 
 def demo_impossibility_theorem():
     """
-    Demonstrate why you cannot satisfy all fairness criteria simultaneously.
-    Shows the trade-off between equalizing TPR vs FPR.
+    The fairness impossibility theorem (Chouldechova 2017; Kleinberg,
+    Mullainathan & Raghavan 2016): when two groups have different base rates, no
+    classifier can satisfy equalized odds (equal TPR AND equal FPR) and
+    predictive parity (equal PPV / precision) at the same time. Enforcing one
+    forces the other to differ; only equal base rates or a perfect classifier
+    escape the bind.
     """
     print("\n" + "=" * 60)
-    print("IMPOSSIBILITY THEOREM IN ACTION")
+    print("FAIRNESS IMPOSSIBILITY THEOREM")
     print("=" * 60)
 
-    print("\nScenario: Two groups with different base rates")
-    print("Group A: 60% positive base rate")
-    print("Group B: 30% positive base rate")
-    print()
+    # Two groups with DIFFERENT base rates (prevalence of the positive class).
+    p_a, p_b = 0.60, 0.30
+    print(f"\nGroup A base rate: {p_a:.0%} positive")
+    print(f"Group B base rate: {p_b:.0%} positive")
 
-    # Starting point: a model with equal accuracy but unequal error rates
-    print("STARTING POINT (unequal error rates):")
-    print("-" * 40)
+    def ppv(tpr, fpr, prevalence):
+        # Precision: P(actually positive | predicted positive), by Bayes' rule.
+        tp = tpr * prevalence
+        fp = fpr * (1 - prevalence)
+        return tp / (tp + fp)
 
-    # Group A: 1000 people, 600 positive, 400 negative
-    # Group B: 1000 people, 300 positive, 700 negative
+    # --- Enforce EQUALIZED ODDS: identical TPR and FPR in both groups. --------
+    tpr, fpr = 0.80, 0.20
+    ppv_a = ppv(tpr, fpr, p_a)
+    ppv_b = ppv(tpr, fpr, p_b)
 
-    # Initial model: same threshold for both
-    a_tp, a_fn = 540, 60   # 90% TPR
-    a_fp, a_tn = 80, 320   # 20% FPR
+    print("\nSuppose we enforce EQUALIZED ODDS (identical TPR and FPR for both):")
+    print(f"{'Group':>8} {'Base rate':>11} {'TPR':>7} {'FPR':>7} {'Precision':>12}")
+    print("-" * 48)
+    print(f"{'A':>8} {p_a:>11.0%} {tpr:>7.0%} {fpr:>7.0%} {ppv_a:>12.1%}")
+    print(f"{'B':>8} {p_b:>11.0%} {tpr:>7.0%} {fpr:>7.0%} {ppv_b:>12.1%}")
+    print(f"\n  TPR and FPR are equal, yet precision differs: "
+          f"{ppv_a:.1%} vs {ppv_b:.1%}")
+    print(f"  ({ppv_a - ppv_b:.1%} gap) -- predictive parity is broken purely")
+    print("  because the base rates differ.")
 
-    b_tp, b_fn = 240, 60   # 80% TPR
-    b_fp, b_tn = 140, 560  # 20% FPR
+    # --- Converse (Chouldechova's identity): hold precision + TPR fixed and the
+    #     false-positive rates are forced apart:
+    #     FPR = (p / (1 - p)) * ((1 - PPV) / PPV) * (1 - FNR)
+    target_ppv = 0.75
+    fnr = 0.20                       # so TPR = 1 - FNR = 80% for both groups
 
-    def print_metrics(label, tp_a, fn_a, fp_a, tn_a, tp_b, fn_b, fp_b, tn_b):
-        tpr_a = tp_a / (tp_a + fn_a)
-        fpr_a = fp_a / (fp_a + tn_a)
-        tpr_b = tp_b / (tp_b + fn_b)
-        fpr_b = fp_b / (fp_b + tn_b)
-        approval_a = (tp_a + fp_a) / 1000
-        approval_b = (tp_b + fp_b) / 1000
+    def fpr_needed(prevalence):
+        return (prevalence / (1 - prevalence)) * ((1 - target_ppv) / target_ppv) * (1 - fnr)
 
-        print(f"\n{label}")
-        print(f"{'Metric':<20} {'Group A':>10} {'Group B':>10} {'Ratio B/A':>12}")
-        print("-" * 55)
-        print(f"{'TPR (Recall)':<20} {tpr_a:>10.1%} {tpr_b:>10.1%} {tpr_b/tpr_a:>12.2f}")
-        print(f"{'FPR':<20} {fpr_a:>10.1%} {fpr_b:>10.1%} {fpr_b/fpr_a:>12.2f}")
-        print(f"{'Approval Rate':<20} {approval_a:>10.1%} {approval_b:>10.1%} {approval_b/approval_a:>12.2f}")
+    fpr_a = fpr_needed(p_a)
+    fpr_b = fpr_needed(p_b)
+    print(f"\nConversely, forcing equal precision ({target_ppv:.0%}) and equal TPR "
+          f"({1 - fnr:.0%})")
+    print("forces the false-positive rates apart:")
+    print(f"  Group A FPR = {fpr_a:.1%}     Group B FPR = {fpr_b:.1%}")
 
-        return tpr_a, fpr_a, tpr_b, fpr_b
-
-    print_metrics(
-        "Initial model (same threshold):",
-        a_tp, a_fn, a_fp, a_tn,
-        b_tp, b_fn, b_fp, b_tn
-    )
-
-    print("\n" + "=" * 60)
-    print("ATTEMPT 1: Equalize True Positive Rates")
-    print("=" * 60)
-    print("Goal: Both groups should have 90% TPR")
-    print("Action: Lower threshold for Group B to catch more positives")
-
-    # To get 90% TPR for B: need 270 TP (currently 240)
-    # Lowering threshold catches more positives but also more false positives
-    b_tp_new = 270  # Now 90% TPR
-    b_fn_new = 30
-    b_fp_new = 210  # FPR goes up!
-    b_tn_new = 490
-
-    print_metrics(
-        "After equalizing TPR:",
-        a_tp, a_fn, a_fp, a_tn,
-        b_tp_new, b_fn_new, b_fp_new, b_tn_new
-    )
-
-    print("\nResult: TPR is now equal (90% for both)")
-    print("BUT: FPR for Group B jumped from 20% to 30%!")
-    print("     Group B now has 1.5x the false positive rate.")
-
-    print("\n" + "=" * 60)
-    print("ATTEMPT 2: Equalize False Positive Rates")
-    print("=" * 60)
-    print("Goal: Both groups should have 20% FPR")
-    print("Action: Raise threshold for Group B to reduce false positives")
-
-    # To get 20% FPR for B: need 140 FP (already there in original)
-    # But if we raise threshold, we also miss more true positives
-    b_tp_new2 = 210  # TPR drops to 70%
-    b_fn_new2 = 90
-    b_fp_new2 = 140  # FPR = 20%
-    b_tn_new2 = 560
-
-    print_metrics(
-        "After equalizing FPR:",
-        a_tp, a_fn, a_fp, a_tn,
-        b_tp_new2, b_fn_new2, b_fp_new2, b_tn_new2
-    )
-
-    print("\nResult: FPR is now equal (20% for both)")
-    print("BUT: TPR for Group B dropped from 80% to 70%!")
-    print("     Qualified people in Group B are now 22% less likely to be approved.")
-
-    print("\n" + "=" * 60)
-    print("THE IMPOSSIBILITY:")
-    print("=" * 60)
-    print("When base rates differ (60% vs 30%), you CANNOT simultaneously:")
-    print("  - Equalize TPR (equal opportunity for qualified individuals)")
-    print("  - Equalize FPR (equal protection for unqualified individuals)")
-    print("  - Equalize approval rates (demographic parity)")
-    print()
-    print("This is a mathematical impossibility, not a technical limitation.")
-    print("You must CHOOSE which fairness criterion matters most for your context.")
-
+    print("\nConclusion: with unequal base rates you must give up at least one of")
+    print("equal TPR, equal FPR, or equal precision -- they cannot all hold at")
+    print("once. This is a mathematical constraint (Chouldechova 2017), not a")
+    print("modeling failure. Which fairness criterion to prioritize is an ethical")
+    print("choice, not a calculation.")
 
 def demo_proxy_variable_correlation():
     """

@@ -75,7 +75,7 @@ Understanding these components helps you choose the right model and spot problem
     Dec    $ 70,000 $ 61,000 $ +10,000 $ -1,000
     ```
 
-    **Interpretation:** December sales ($70K) aren't just "high"—they're the sum of underlying trend ($61K), seasonal boost (+$10K for holiday shopping), and random noise (-$1K). Decomposition reveals that the $18K swing from February to December is almost entirely seasonal, not growth. For forecasting, extrapolate trend forward, add the expected seasonal effect, and report uncertainty from the noise variance.
+    **Interpretation:** December sales ($70K) aren't just "high"—they're the sum of underlying trend ($61K), seasonal boost (+$10K for holiday shopping), and random noise (-$1K). Decomposition reveals that of the $27K rise from February ($43K) to December ($70K), about $18K is the seasonal swing (winter trough to holiday peak) and roughly $10K is genuine trend growth (with -$1K of noise)—so the year-end jump is mostly seasonal, but not entirely. For forecasting, extrapolate trend forward, add the expected seasonal effect, and report uncertainty from the noise variance.
 
     *Source: `computations/deep_dive_timeseries_examples.py` — `demo_time_series_decomposition()`*
 

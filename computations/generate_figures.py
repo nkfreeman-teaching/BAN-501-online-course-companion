@@ -1139,21 +1139,22 @@ def _(COLORS, DPI, OUTPUT_DIR, np, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 12. ReLU Bump Function (Two ReLUs Combined)
-    **Target slide**: `Deep Dive - Universal Approximators.md`, lines 382-391
+    ## 12. ReLU Bump Function (Three ReLUs Combined)
+    **Target slide**: `Deep Dive - Universal Approximators.md`
 
-    Shows how two ReLUs can create a "bump" shape
+    Shows how three shifted ReLUs create a localized triangular "bump" shape
     """)
     return
 
 
 @app.cell
 def _(COLORS, DPI, FIG_WIDTH, OUTPUT_DIR, np, plt):
-    # ReLU Bump Function - extended x range to show the plateau clearly
-    _x = np.linspace(-1, 4, 250)
+    # ReLU Bump Function: a localized triangular bump from three shifted ReLUs
+    #   bump(x) = ReLU(x) - 2*ReLU(x-1) + ReLU(x-2)
+    _x = np.linspace(-1, 3, 300)
     _relu1 = np.maximum(0, _x)
-    _relu2 = np.maximum(0, _x - 1)
-    _bump = _relu1 - _relu2
+    _step2 = _relu1 - 2 * np.maximum(0, _x - 1)      # rises to 1, then bends down
+    _bump = _step2 + np.maximum(0, _x - 2)           # flattens back to 0 past x=2
 
     _fig, _axes = plt.subplots(
         nrows=1,
@@ -1161,7 +1162,7 @@ def _(COLORS, DPI, FIG_WIDTH, OUTPUT_DIR, np, plt):
         figsize=(FIG_WIDTH, 3.5),
     )
 
-    # ReLU(x)
+    # Panel 1: ReLU(x) — a plain rising ramp
     _axes[0].plot(
         _x,
         _relu1,
@@ -1171,21 +1172,21 @@ def _(COLORS, DPI, FIG_WIDTH, OUTPUT_DIR, np, plt):
     _axes[0].axhline(y=0, color=COLORS["neutral"], linestyle="-", alpha=0.3)
     _axes[0].axvline(x=0, color=COLORS["neutral"], linestyle="--", alpha=0.5)
     _axes[0].set_title("ReLU(x)", fontsize=12, fontweight="bold")
-    _axes[0].set_ylim(-0.5, 4)
+    _axes[0].set_ylim(-1.5, 3)
 
-    # ReLU(x-1)
+    # Panel 2: ReLU(x) - 2*ReLU(x-1) — rises to 1, then bends downward past x=1
     _axes[1].plot(
         _x,
-        _relu2,
+        _step2,
         color=COLORS["secondary"],
         linewidth=3,
     )
     _axes[1].axhline(y=0, color=COLORS["neutral"], linestyle="-", alpha=0.3)
     _axes[1].axvline(x=0, color=COLORS["neutral"], linestyle="--", alpha=0.5)
-    _axes[1].set_title("ReLU(x - 1)", fontsize=12, fontweight="bold")
-    _axes[1].set_ylim(-0.5, 4)
+    _axes[1].set_title("ReLU(x) - 2*ReLU(x-1)", fontsize=11, fontweight="bold")
+    _axes[1].set_ylim(-1.5, 3)
 
-    # Combined - THIS shows the bump shape: 0 -> rise -> plateau at 1
+    # Panel 3: add ReLU(x-2) to flatten it — the localized triangular bump
     _axes[2].fill_between(
         _x,
         _bump,
@@ -1201,10 +1202,9 @@ def _(COLORS, DPI, FIG_WIDTH, OUTPUT_DIR, np, plt):
     _axes[2].axhline(y=0, color=COLORS["neutral"], linestyle="-", alpha=0.3)
     _axes[2].axhline(y=1, color=COLORS["accent"], linestyle="--", alpha=0.5, linewidth=1)
     _axes[2].axvline(x=0, color=COLORS["neutral"], linestyle="--", alpha=0.3)
-    _axes[2].set_title("ReLU(x) - ReLU(x-1)", fontsize=12, fontweight="bold")
-    _axes[2].set_ylim(-0.5, 4)  # Focus on the bump shape
+    _axes[2].set_title("ReLU(x) - 2*ReLU(x-1) + ReLU(x-2)", fontsize=10, fontweight="bold")
+    _axes[2].set_ylim(-1.5, 3)
 
-    # _fig.suptitle("Creating a Ramp with Two ReLUs", fontsize=16, fontweight="bold", y=1.02)
     _fig.tight_layout()
     _fig.savefig(
         OUTPUT_DIR / "deep_dive" / "relu_bump.png",

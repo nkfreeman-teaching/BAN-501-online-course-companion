@@ -242,7 +242,7 @@ def demo_logistic_regression_equiv():
 
 def demo_relu_bump_construction():
     """
-    Show step-by-step how two ReLUs create a "bump" function.
+    Show step-by-step how three ReLUs create a localized "bump" function.
     This is the building block for universal approximation.
     """
     print("\n" + "=" * 60)
@@ -252,34 +252,38 @@ def demo_relu_bump_construction():
     def relu(x):
         return np.maximum(0, x)
 
-    print("\nFormula: bump(x) = ReLU(x) - ReLU(x-1)")
-    print("This creates a ramp from 0 to 1, then plateaus at 1")
+    print("\nFormula: bump(x) = ReLU(x) - 2*ReLU(x-1) + ReLU(x-2)")
+    print("This rises from 0 to 1 over [0,1], then falls back to 0 over [1,2]")
 
     x_values = np.array([-1.0, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0])
 
-    print(f"\n{'x':>6} {'ReLU(x)':>10} {'ReLU(x-1)':>12} {'Difference':>12} {'Shape':>15}")
-    print("-" * 60)
+    print(f"\n{'x':>6} {'ReLU(x)':>10} {'ReLU(x-1)':>12} {'ReLU(x-2)':>12} {'bump':>8} {'Shape':>10}")
+    print("-" * 64)
 
     for x in x_values:
         r1 = relu(x)
         r2 = relu(x - 1)
-        diff = r1 - r2
+        r3 = relu(x - 2)
+        bump = r1 - 2 * r2 + r3
 
-        if x < 0:
-            shape = "Before ramp"
+        if x <= 0 or x >= 2:
+            shape = "Outside"
         elif x < 1:
             shape = "Rising"
+        elif x == 1:
+            shape = "Peak"
         else:
-            shape = "Plateau at 1"
+            shape = "Falling"
 
-        print(f"{x:>6.1f} {r1:>10.2f} {r2:>12.2f} {diff:>12.2f} {shape:>15}")
+        print(f"{x:>6.1f} {r1:>10.2f} {r2:>12.2f} {r3:>12.2f} {bump:>8.2f} {shape:>10}")
 
-    print("\nGeneralizing: ReLU(x-a) - ReLU(x-b) creates a bump from a to b")
-    print("  - Start of rise: x = a (where first ReLU activates)")
-    print("  - End of rise: x = b (where second ReLU catches up)")
-    print("  - Height: b - a")
+    print("\nGeneralizing: ReLU(x-a) - 2*ReLU(x-c) + ReLU(x-b), with c midway")
+    print("between a and b, makes a triangular bump that rises from 0 at x=a")
+    print("to a peak of (c-a) at x=c, then falls back to 0 at x=b.")
+    print("  - Peak location: x = c")
+    print("  - Width: b - a")
 
-    print("\nWith many such bumps at different positions and heights,")
+    print("\nWith many such localized bumps at different positions and heights,")
     print("you can approximate any continuous function!")
 
 

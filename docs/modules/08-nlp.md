@@ -957,11 +957,13 @@ Wav2Vec 2.0 (Facebook AI, 2020) takes a self-supervised approach: train on unlab
 
 Multimodal learning connects representations across data types—text, image, and audio—in a shared vector space. The central challenge is alignment: what makes a representation of "a red apple" (from text) similar to the representation of an image of a red apple?
 
-**CLIP** (Contrastive Language-Image Pretraining, OpenAI 2021) learns this alignment through contrastive training. Given a batch of (image, text caption) pairs, CLIP trains two encoders—one for images, one for text—to produce embeddings such that matched pairs have high cosine similarity and unmatched pairs have low cosine similarity. The training objective maximizes the diagonal of the cross-modal similarity matrix:
+**CLIP** (Contrastive Language-Image Pretraining, OpenAI 2021) learns this alignment through contrastive training. Given a batch of (image, text caption) pairs, CLIP trains two encoders—one for images, one for text—to produce embeddings such that matched pairs have high cosine similarity and unmatched pairs have low cosine similarity. The objective is a *symmetric* contrastive loss that maximizes the diagonal of the cross-modal similarity matrix, averaging a cross-entropy taken in each direction:
 
-$$\mathcal{L}_{\text{CLIP}} = -\frac{1}{B}\sum_{i=1}^B \log \frac{\exp(\text{sim}(v_i, t_i)/\tau)}{\sum_{j=1}^B \exp(\text{sim}(v_i, t_j)/\tau)}$$
+$$\mathcal{L}_{\text{CLIP}} = \tfrac{1}{2}\left(\mathcal{L}_{v \to t} + \mathcal{L}_{t \to v}\right)$$
 
-where $v_i$ and $t_i$ are the image and text embeddings for the $i$-th pair, $B$ is the batch size, and $\tau$ is a learned temperature parameter. This is trained on 400 million image-caption pairs from the web.
+$$\mathcal{L}_{v \to t} = -\frac{1}{B}\sum_{i=1}^B \log \frac{\exp(\text{sim}(v_i, t_i)/\tau)}{\sum_{j=1}^B \exp(\text{sim}(v_i, t_j)/\tau)}, \qquad \mathcal{L}_{t \to v} = -\frac{1}{B}\sum_{i=1}^B \log \frac{\exp(\text{sim}(v_i, t_i)/\tau)}{\sum_{j=1}^B \exp(\text{sim}(v_j, t_i)/\tau)}$$
+
+where $v_i$ and $t_i$ are the image and text embeddings for the $i$-th pair, $B$ is the batch size, and $\tau$ is a learned temperature parameter. The first term treats each image as a query ranked against all captions (image→text); the second treats each caption as a query against all images (text→image). Averaging both keeps the objective symmetric in the two modalities. This is trained on 400 million image-caption pairs from the web.
 
 The result is a shared embedding space where you can compare images and text directly using cosine similarity—the foundation for zero-shot image classification (compare an image embedding to embeddings of class name strings) and for DALL-E's image generation (generate images whose embedding matches a text prompt embedding).
 

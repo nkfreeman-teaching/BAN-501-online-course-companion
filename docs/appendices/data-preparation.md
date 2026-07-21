@@ -89,7 +89,7 @@ The key diagnostic question is: "If I knew the missing value, would that help me
 
 Many algorithms are sensitive to the scale of features. If one feature ranges from 0-1 and another from 0-1,000,000, the larger feature will dominate. The distance problem makes the need for scaling concrete. Imagine finding the nearest neighbor for a customer using age (20-70 years) and income ($30,000-$200,000). Two customers might differ by 5 years in age and $1,000 in income. Without scaling, the distance calculation treats the age difference as 5 units and the income difference as 1,000 units.
 
-The income difference completely dominates—the algorithm essentially ignores age. A 50-year age difference (5 units) matters less than a $50 income difference (50 units). But intuitively, age and income should both influence "similarity."
+The income difference completely dominates—the algorithm essentially ignores age. Even the entire 50-year span of age (50 raw units) counts for less than a $1,000 income gap (1,000 raw units), although 50 years is a lifetime and $1,000 is often trivial. But intuitively, age and income should both influence "similarity."
 
 After standardization (converting to z-scores), both features are measured in "standard deviations from the mean." A 1-standard-deviation difference in age has the same weight as a 1-standard-deviation difference in income. Now the algorithm considers both features fairly.
 
@@ -355,4 +355,4 @@ Several common beliefs about data preparation do not hold up in practice.
 | "Always standardize your features" | Tree-based models don't need scaling. Know your algorithm. |
 | "One-hot encoding is always best" | High-cardinality features may need target encoding or embeddings. |
 
-Embeddings, covered in detail in Module 6, offer an alternative for high-cardinality categories. Instead of one-hot encoding (millions of columns for product IDs) or target encoding (which loses information), each category gets a small vector of continuous values learned during training. The model figures out which categories are "similar" based on their relationship to the target.
+Embeddings, covered in detail in Module 8, offer an alternative for high-cardinality categories. Instead of one-hot encoding (millions of columns for product IDs) or target encoding (which loses information), each category gets a small vector of continuous values learned during training. The model figures out which categories are "similar" based on their relationship to the target.

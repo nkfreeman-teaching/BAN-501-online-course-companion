@@ -477,22 +477,30 @@ def demo_pca_vs_tsne():
 
     np.random.seed(42)
 
-    # Create two moons (non-linear structure)
-    X_moons, labels_moons = make_moons(
+    # Two interlocking half-moons (a NON-LINEAR 2D structure), then lifted into
+    # 50 dimensions by a random nonlinear (cosine/Fourier) feature map. The lift
+    # is what makes this a real dimensionality-reduction problem: PCA now has to
+    # project 50-D -> 2-D, and a *linear* projection cannot untangle the curved
+    # structure the way a nonlinear method can.
+    X_moons_2d, labels_moons = make_moons(
         n_samples=300,
         noise=0.05,
         random_state=42,
     )
+    rng = np.random.default_rng(0)
+    W = rng.standard_normal((2, 50)) * 1.5
+    bias = rng.uniform(0, 2 * np.pi, 50)
+    X_moons = np.cos(X_moons_2d @ W + bias)  # 300 x 50 nonlinear embedding
 
-    print(f"\nDataset: Two interlocking half-moons (300 points)")
-    print(f"This is a NON-LINEAR structure that challenges PCA.")
+    print(f"\nDataset: two interlocking half-moons embedded in {X_moons.shape[1]}-D")
+    print(f"(a NON-LINEAR structure), reduced to 2D for visualization.")
 
-    # PCA
+    # PCA: a LINEAR projection 50-D -> 2-D
     pca = PCA(n_components=2)
     X_pca = pca.fit_transform(X_moons)
     sil_pca = silhouette_score(X_pca, labels_moons)
 
-    # t-SNE
+    # t-SNE: a NON-LINEAR embedding 50-D -> 2-D
     tsne = TSNE(
         n_components=2,
         perplexity=30,
@@ -501,17 +509,18 @@ def demo_pca_vs_tsne():
     X_tsne = tsne.fit_transform(X_moons)
     sil_tsne = silhouette_score(X_tsne, labels_moons)
 
-    print(f"\nCluster separation (silhouette score on 2D projection):")
-    print(f"{'Method':>10} {'Silhouette':>12} {'Interpretation':>30}")
-    print("-" * 55)
-    print(f"{'PCA':>10} {sil_pca:>12.3f} {'Linear: moons overlap':>30}")
-    print(f"{'t-SNE':>10} {sil_tsne:>12.3f} {'Non-linear: moons separated':>30}")
+    print(f"\nCluster separation (silhouette score on the 2D result):")
+    print(f"{'Method':>10} {'Silhouette':>12} {'Interpretation':>32}")
+    print("-" * 57)
+    print(f"{'PCA':>10} {sil_pca:>12.3f} {'Linear projection: moons overlap':>32}")
+    print(f"{'t-SNE':>10} {sil_tsne:>12.3f} {'Non-linear: moons separated':>32}")
 
-    # Also test on linear blobs
+    # For comparison: blobs that ARE linearly separable, also in 50-D.
     X_blobs, labels_blobs = make_blobs(
         n_samples=300,
         centers=3,
-        cluster_std=1.0,
+        n_features=50,
+        cluster_std=4.0,
         random_state=42,
     )
 
@@ -527,11 +536,11 @@ def demo_pca_vs_tsne():
     X_tsne_blobs = tsne_blobs.fit_transform(X_blobs)
     sil_tsne_blobs = silhouette_score(X_tsne_blobs, labels_blobs)
 
-    print(f"\nFor comparison, on spherical blobs (linear structure):")
-    print(f"{'Method':>10} {'Silhouette':>12} {'Interpretation':>30}")
-    print("-" * 55)
-    print(f"{'PCA':>10} {sil_pca_blobs:>12.3f} {'Works well for linear data':>30}")
-    print(f"{'t-SNE':>10} {sil_tsne_blobs:>12.3f} {'Also works, slightly different':>30}")
+    print(f"\nFor comparison, on 50-D spherical blobs (LINEAR structure):")
+    print(f"{'Method':>10} {'Silhouette':>12} {'Interpretation':>32}")
+    print("-" * 57)
+    print(f"{'PCA':>10} {sil_pca_blobs:>12.3f} {'Projection recovers clusters':>32}")
+    print(f"{'t-SNE':>10} {sil_tsne_blobs:>12.3f} {'Also works, slightly different':>32}")
 
     print(f"\nKey insight:")
     print(f"  - PCA: Fast, preserves global structure, best for LINEAR relationships")

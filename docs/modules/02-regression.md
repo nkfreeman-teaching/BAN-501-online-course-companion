@@ -67,7 +67,7 @@ Squared errors penalize large errors more than small ones—an error of 10 contr
 
 #### When Squared Errors Are Not the Right Choice
 
-MSE assumes symmetric, quadratic costs—each unit of over-prediction is penalized equally to each unit of under-prediction. That assumption doesn't always hold. In demand forecasting, under-predicting (stockouts that lose sales) might cost more than over-predicting (excess inventory). For outlier-heavy data, MAE or Huber loss are more robust because they don't square large errors. For classification, cross-entropy is more appropriate than MSE. The right quality measure encodes your actual business costs. When asymmetric costs apply, use **weighted least squares** (assign higher weights to observations where errors are more costly) or **quantile regression** (which systematically over- or under-predicts at a chosen quantile—useful for safety stock planning). In deep learning, you can define arbitrary custom loss functions. Start with squared errors and only add complexity when you have clear business justification for asymmetric costs.
+MSE assumes symmetric, quadratic costs—each unit of over-prediction is penalized equally to each unit of under-prediction. That assumption doesn't always hold. In demand forecasting, under-predicting (stockouts that lose sales) might cost more than over-predicting (excess inventory). For outlier-heavy data, MAE or Huber loss are more robust because they don't square large errors. For classification, cross-entropy is more appropriate than MSE. The right quality measure encodes your actual business costs. When costs are asymmetric in *direction*—under-prediction costing more than over-prediction—use **quantile regression** (which deliberately over- or under-predicts at a chosen quantile, useful for safety-stock planning) or an explicitly asymmetric loss that penalizes positive and negative residuals differently. Note that **weighted least squares** does *not* solve this: it weights whole observations (useful when some observations are noisier or more reliable), but for a given observation it still penalizes over- and under-prediction symmetrically. In deep learning, you can define arbitrary custom loss functions. Start with squared errors and only add complexity when you have clear business justification for asymmetric costs.
 
 The closed-form solution gives exact values for the coefficients:
 
@@ -317,7 +317,7 @@ For example, consider this fitted model:
 sales = 50,000 + 2.5 × advertising + 1,200 × sales_staff
 ```
 
-The intercept tells you that baseline sales are $50,000 (when advertising = 0 and sales_staff = 0). The advertising coefficient means each $1 in advertising is associated with $2.50 more in sales (250% ROI), and the sales_staff coefficient means each additional staff member is associated with $1,200 more in sales.
+The intercept tells you that baseline sales are $50,000 (when advertising = 0 and sales_staff = 0). The advertising coefficient means each $1 in advertising is associated with $2.50 more in sales (a $2.50 revenue response per advertising dollar—whether that is profitable depends on your margin, so it is not the same as a 250% return), and the sales_staff coefficient means each additional staff member is associated with $1,200 more in sales.
 
 #### Correlation Does Not Imply Causation
 

@@ -306,7 +306,7 @@ Calculating silhouette by hand illustrates how the score measures how well each 
 
 ### DBSCAN: Density-Based Clustering
 
-K-means assumes spherical clusters. DBSCAN handles irregular shapes, different densities, and noise or outliers.
+K-means assumes spherical clusters. DBSCAN handles irregular (non-spherical) shapes and noise or outliers, and does not require you to specify the number of clusters in advance. Because it uses a single global `eps`, however, standard DBSCAN struggles when different clusters have very different densities; HDBSCAN and OPTICS extend it to handle varying density.
 
 #### Core Concepts
 
@@ -314,7 +314,7 @@ DBSCAN classifies each point into one of three categories. A **core point** has 
 
 #### Algorithm
 
-First, find all core points. Next, connect core points within `eps` of each other transitively. Then, assign border points to the nearest core point's cluster. Everything else is noise.
+First, find all core points. Next, connect core points within `eps` of each other transitively into clusters. Then, attach each border point to a cluster it is density-reachable from (within `eps` of one of that cluster's core points); a border point reachable from more than one cluster is assigned by processing order. Everything else is noise.
 
 #### Connecting Core Points in Detail
 
@@ -760,23 +760,28 @@ A decision flowchart can guide your choice. If you need features for a downstrea
 !!! example "Numerical Example: PCA vs t-SNE on Structured Data"
 
     ```python
+    import numpy as np
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
-    from sklearn.datasets import make_moons, make_blobs
+    from sklearn.datasets import make_moons
     from sklearn.metrics import silhouette_score
 
-    # Non-linear data: two interlocking half-moons
-    X_moons, labels = make_moons(n_samples=300, noise=0.05, random_state=42)
+    # Two 2-D half-moons, then lifted into 50-D by a random nonlinear (cosine)
+    # map so a LINEAR projection genuinely has to reduce dimensionality.
+    X2, labels = make_moons(n_samples=300, noise=0.05, random_state=42)
+    rng = np.random.default_rng(0)
+    W = rng.standard_normal((2, 50)) * 1.5
+    b = rng.uniform(0, 2 * np.pi, 50)
+    X = np.cos(X2 @ W + b)                         # 300 x 50, non-linear embedding
 
-    # PCA projection
-    X_pca = PCA(n_components=2).fit_transform(X_moons)
+    # PCA: linear projection 50-D -> 2-D
+    X_pca = PCA(n_components=2).fit_transform(X)
     sil_pca = silhouette_score(X_pca, labels)
 
-    # t-SNE projection
-    X_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(X_moons)
+    # t-SNE: non-linear embedding 50-D -> 2-D
+    X_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(X)
     sil_tsne = silhouette_score(X_tsne, labels)
 
-    print(f"Two Moons (non-linear):")
     print(f"  PCA silhouette:   {sil_pca:.3f}  (moons overlap)")
     print(f"  t-SNE silhouette: {sil_tsne:.3f}  (moons separated)")
     ```
@@ -784,15 +789,12 @@ A decision flowchart can guide your choice. If you need features for a downstrea
     **Output:**
 
     ```
-    Two Moons (non-linear):
-      PCA silhouette:   0.331  (moons overlap)
-      t-SNE silhouette: 0.646  (moons separated)
+    Two Moons lifted to 50-D (non-linear):
+      PCA silhouette:   0.333  (moons overlap)
+      t-SNE silhouette: 0.629  (moons separated)
     ```
 
-    **Interpretation:** PCA's linear projection fails on the curved "two moons"
-    structure—the classes overlap in 2D. t-SNE's non-linear approach separates
-    them clearly. For linear cluster structures (spherical blobs), both methods
-    work well. **Use PCA for preprocessing; use t-SNE/UMAP for visualization.**
+    **Interpretation:** With the curved two-moons structure embedded in 50 dimensions, PCA's *linear* projection down to 2D cannot untangle it—the two moons overlap (silhouette 0.333). t-SNE's non-linear embedding preserves local neighborhoods and separates them cleanly (0.629). The lesson generalizes: PCA is the right tool when the structure you care about lies along linear (high-variance) directions, but for curved manifolds a non-linear method like t-SNE or UMAP recovers structure a linear projection discards. On genuinely linear high-dimensional structure (well-separated blobs), PCA's projection works fine on its own. **Use PCA for preprocessing; use t-SNE/UMAP for visualization.**
 
     *Source: `computations/module5_examples.py` — `demo_pca_vs_tsne()`*
 

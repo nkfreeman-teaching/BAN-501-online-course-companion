@@ -317,15 +317,15 @@ As the numerical example confirms, adding more neurons produces a sharper approx
 
 ### Why ReLU Combinations Work
 
-A single ReLU is a ramp, $\max(0, x)$, but two ReLUs can be combined to make a bump.
+A single ReLU is a ramp, $\max(0, x)$. Subtracting two ReLUs gives a *clipped ramp* (it rises, then plateaus), but three shifted ReLUs can be combined into a localized **bump** that rises and then falls back to zero.
 
-$$f(x) = \text{ReLU}(x) - \text{ReLU}(x - 1)$$
+$$f(x) = \text{ReLU}(x) - 2\,\text{ReLU}(x - 1) + \text{ReLU}(x - 2)$$
 
 Each hidden neuron in a ReLU network adds one potential "kink" (corner) to your function, so a network with 10 hidden neurons can create a function with at most 10 corners. The number of kinks you need depends on the target: a degree-n polynomial requires roughly n kinks to approximate well, and a step function needs just a few. However, something wiggly like sin(x) over multiple periods might need 50+ kinks for a good approximation. The Universal Approximation Theorem says "enough kinks exist"—but you discover how many through experimentation.
 
 ![ReLU Bump](../assets/deep_dive/relu_bump.png)
 
-Three panels show how to build a "bump" from two ReLUs. In the left panel, ReLU(x) starts ramping up at x=0. In the middle panel, ReLU(x-1) starts ramping up at x=1 (shifted by the bias). In the right panel, subtracting them (ReLU(x) - ReLU(x-1)) creates a function that rises from 0 to 1, then plateaus. The shaded orange area shows the "bump"—a building block for approximating any shape. By positioning many such bumps at different locations and scaling them by different amounts, you can construct arbitrarily complex functions.
+The panels show how to build a localized bump from three shifted ReLUs. $\text{ReLU}(x)$ ramps up from $x=0$; subtracting $2\,\text{ReLU}(x-1)$ bends the slope downward past $x=1$; adding $\text{ReLU}(x-2)$ flattens it back out past $x=2$. The result rises from 0 to a peak of 1 at $x=1$ and falls back to 0 at $x=2$—the shaded orange triangle is the "bump." By positioning many such bumps at different locations and scaling them by different amounts, you can construct arbitrarily complex functions.
 
 !!! example "Numerical Example: ReLU Bump Construction"
 
@@ -335,28 +335,27 @@ Three panels show how to build a "bump" from two ReLUs. In the left panel, ReLU(
     def relu(x):
         return np.maximum(0, x)
 
-    # bump(x) = ReLU(x) - ReLU(x-1)
+    # bump(x) = ReLU(x) - 2*ReLU(x-1) + ReLU(x-2)  (a localized triangle)
     for x in [-1, 0, 0.5, 1, 1.5, 2, 3]:
-        r1 = relu(x)
-        r2 = relu(x - 1)
-        bump = r1 - r2
-        print(f"x={x:4.1f}: ReLU(x)={r1:.2f}, ReLU(x-1)={r2:.2f}, bump={bump:.2f}")
+        bump = relu(x) - 2 * relu(x - 1) + relu(x - 2)
+        print(f"x={x:4.1f}: bump={bump:.2f}")
     ```
 
     **Output:**
 
     ```
-         x    ReLU(x)    ReLU(x-1)   Difference   Shape
-    ------------------------------------------------------------
-      -1.0       0.00         0.00         0.00   Before ramp
-       0.0       0.00         0.00         0.00   Start of ramp
-       0.5       0.50         0.00         0.50   Rising
-       1.0       1.00         0.00         1.00   Plateau at 1
-       1.5       1.50         0.50         1.00   Plateau at 1
-       2.0       2.00         1.00         1.00   Plateau at 1
+         x    ReLU(x)    ReLU(x-1)    ReLU(x-2)     bump      Shape
+    ----------------------------------------------------------------
+      -1.0       0.00         0.00         0.00     0.00    Outside
+       0.0       0.00         0.00         0.00     0.00    Outside
+       0.5       0.50         0.00         0.00     0.50     Rising
+       1.0       1.00         0.00         0.00     1.00       Peak
+       1.5       1.50         0.50         0.00     0.50    Falling
+       2.0       2.00         1.00         0.00     0.00    Outside
+       3.0       3.00         2.00         1.00     0.00    Outside
     ```
 
-    **Interpretation:** The bump rises from 0 to 1 as x goes from 0 to 1, then stays at 1 forever. The second ReLU "catches up" and cancels further growth. This plateau behavior is the key to building arbitrary shapes.
+    **Interpretation:** The bump rises from 0 to a peak of 1 at $x=1$, then falls back to 0 by $x=2$—a localized triangle rather than a plateau. Subtracting twice the shifted ReLU bends the rising slope downward at the peak, and the third ReLU flattens it to 0. This *localized* bump is the key building block: by placing many bumps at different positions and scaling them, a ReLU network can approximate any continuous shape.
 
     *Source: `computations/deep_dive_universal_approx_examples.py` — `demo_relu_bump_construction()`*
 

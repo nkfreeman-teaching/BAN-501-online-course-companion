@@ -35,23 +35,28 @@ def demo_permutation_importance():
     print("PERMUTATION IMPORTANCE STEP BY STEP")
     print("=" * 60)
 
-    # Create dataset with known important features
+    # Create a dataset that demonstrates REDUNDANCY: x2 is a near-copy of x1.
     np.random.seed(42)
-    n_samples = 500
+    n_samples = 2000
 
-    # Feature 1: Very important (strong signal)
+    # Feature 1: the real signal
     x1 = np.random.randn(n_samples)
-    # Feature 2: Moderately important
-    x2 = np.random.randn(n_samples)
-    # Feature 3: Noise (not important)
+    # Feature 2: a redundant proxy for x1, correlated at rho = 0.95
+    rho = 0.95
+    x2 = rho * x1 + np.sqrt(1 - rho**2) * np.random.randn(n_samples)
+    # Feature 3: pure noise (not important)
     x3 = np.random.randn(n_samples)
 
-    # Target depends strongly on x1, moderately on x2, not on x3
-    prob = 1 / (1 + np.exp(-(2 * x1 + 0.5 * x2)))
+    # Target depends on x1 ONLY. Because x2 ~= x1, x2 carries the SAME signal
+    # redundantly, so the model can predict from either feature.
+    prob = 1 / (1 + np.exp(-(2 * x1)))
     y = (np.random.rand(n_samples) < prob).astype(int)
 
     X = np.column_stack([x1, x2, x3])
-    feature_names = ['x1 (strong)', 'x2 (moderate)', 'x3 (noise)']
+    feature_names = ['x1 (signal)', 'x2 (proxy, r=0.95)', 'x3 (noise)']
+
+    realized_corr = np.corrcoef(x1, x2)[0, 1]
+    print(f"\nCorrelation between x1 and its proxy x2: r = {realized_corr:.2f}")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
@@ -70,29 +75,34 @@ def demo_permutation_importance():
     baseline_acc = model.score(X_test, y_test)
     print(f"\nBaseline accuracy on test set: {baseline_acc:.1%}")
 
-    print("\nPermutation importance process:")
+    # Manual permutation importance for each feature, averaged over several
+    # shuffles so a single lucky permutation does not dominate the estimate.
+    n_repeats = 30
+    print(f"\nPermutation importance (mean over {n_repeats} shuffles):")
     print("-" * 50)
 
-    # Manual permutation importance for each feature
     for i, name in enumerate(feature_names):
-        # Shuffle feature i
-        X_test_shuffled = X_test.copy()
-        np.random.seed(42)
-        X_test_shuffled[:, i] = np.random.permutation(X_test_shuffled[:, i])
-
-        # Measure new accuracy
-        shuffled_acc = model.score(X_test_shuffled, y_test)
-        importance = baseline_acc - shuffled_acc
+        rng = np.random.default_rng(42)  # same shuffles applied to each feature
+        drops = []
+        for _ in range(n_repeats):
+            X_test_shuffled = X_test.copy()
+            X_test_shuffled[:, i] = rng.permutation(X_test_shuffled[:, i])
+            drops.append(baseline_acc - model.score(X_test_shuffled, y_test))
+        importance = float(np.mean(drops))
 
         print(f"\n{name}:")
-        print(f"  Shuffle feature → accuracy drops to {shuffled_acc:.1%}")
-        print(f"  Importance = {baseline_acc:.1%} - {shuffled_acc:.1%} = {importance:.1%}")
+        print(f"  Mean accuracy after shuffling: {baseline_acc - importance:.1%}")
+        print(f"  Importance = {importance:+.1%}")
 
     print("\nInterpretation:")
-    print("  - x1 (strong signal): Large accuracy drop when shuffled")
-    print("  - x2 (moderate signal): Moderate drop")
-    print("  - x3 (noise): Near-zero drop (model doesn't use it)")
-    print("\nThe 'blindfold test': hiding important information hurts performance.")
+    print("  - x1 (signal): large drop when shuffled — the model relies on it.")
+    print("  - x2 (proxy, r=0.95): importance ~0 EVEN THOUGH it is 95% correlated")
+    print("    with the signal. When x2 is shuffled the model falls back on its")
+    print("    untouched twin x1, so accuracy barely moves — the redundancy trap.")
+    print("  - x3 (noise): importance ~0 because it carries no signal at all.")
+    print("\nLesson: x2 and x3 both look unimportant, but for OPPOSITE reasons —")
+    print("x2 is redundant, x3 is irrelevant. Permutation importance under-credits")
+    print("correlated features; group or drop them before trusting the ranking.")
 
 
 def demo_partial_dependence():

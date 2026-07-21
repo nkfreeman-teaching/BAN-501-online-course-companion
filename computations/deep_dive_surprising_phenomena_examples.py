@@ -44,14 +44,17 @@ def demo_bias_variance_tradeoff():
 
     # Generate data: true function is quadratic with noise
     np.random.seed(42)
-    n_samples = 50
+    n_samples = 500
     X = np.random.uniform(-3, 3, n_samples).reshape(-1, 1)
     y_true = 0.5 * X.ravel()**2 - X.ravel() + 1  # True quadratic
     y = y_true + np.random.randn(n_samples) * 0.5  # Add noise
 
-    # Split data
+    # Split data. We deliberately hold out a LARGE test set (70%) and train on
+    # the smaller remainder: the big test set gives a stable estimate of test
+    # error (so the true degree 2 wins rather than a lucky higher degree), while
+    # the modest training set still lets high-degree models overfit.
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, random_state=42
+        X, y, test_size=0.7, random_state=42
     )
 
     # True function for test evaluation
@@ -220,26 +223,32 @@ def demo_interpolation_threshold_peak():
     # Zoom in around the threshold
     feature_counts = [30, 40, 45, 48, 50, 52, 55, 60, 80, 100]
 
+    # Compute every test MSE first, then derive the labels from the data so the
+    # "peak" and "descending" notes always match the numbers actually printed
+    # (on a single noisy draw the empirical peak need not land exactly on p=n).
+    test_mses = []
     for n_feat in feature_counts:
         Phi_train = fourier_features(X_train, n_feat)
         Phi_test = fourier_features(X_test, n_feat)
-
         model = Ridge(alpha=0.01)
         model.fit(Phi_train, y_train)
+        test_mses.append(mean_squared_error(y_test, model.predict(Phi_test)))
 
-        test_mse = mean_squared_error(y_test, model.predict(Phi_test))
+    peak_idx = int(np.argmax(test_mses))
+    for i, n_feat in enumerate(feature_counts):
         ratio = n_feat / n_train
-
-        if n_feat == 50:
-            note = "<<< PEAK: exactly n features"
+        if i == peak_idx:
+            note = "<<< PEAK: highest test error"
+        elif n_feat == n_train:
+            note = "p = n (interpolation threshold)"
         elif abs(ratio - 1.0) < 0.1:
             note = "Near threshold"
-        elif ratio < 1:
-            note = ""
-        else:
+        elif i > peak_idx and test_mses[i] < test_mses[i - 1]:
             note = "Descending..."
+        else:
+            note = ""
 
-        print(f"{n_feat:<10} {ratio:<10.2f} {test_mse:<12.4f} {note:<30}")
+        print(f"{n_feat:<10} {ratio:<10.2f} {test_mses[i]:<12.4f} {note:<30}")
 
     print()
     print("Interpretation: Error peaks at or near n_features = n_samples.")
