@@ -364,7 +364,7 @@ import seaborn as sns
 
 # Distribution
 plt.figure(figsize=(10, 6))
-sns.histplot(df['column'], kde=True)
+sns.histplot(df['column'].to_list(), kde=True)
 plt.title('Distribution of Column')
 plt.show()
 

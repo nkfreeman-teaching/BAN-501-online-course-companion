@@ -449,18 +449,21 @@ shap_values = explainer.shap_values(X_test)
 # Summary plot (global view)
 shap.summary_plot(shap_values, X_test)
 
-# Force plot (single prediction)
+# Force plot (single prediction).
+# X_test is polars, so pass a numpy row (.to_numpy()[0]) plus feature_names
+# explicitly — the array carries no column labels of its own.
 shap.force_plot(
     explainer.expected_value,
     shap_values[0],
-    X_test.iloc[0]
+    X_test.to_numpy()[0],
+    feature_names=feature_names,
 )
 
 # Waterfall plot (detailed breakdown)
 shap.waterfall_plot(shap.Explanation(
     values=shap_values[0],
     base_values=explainer.expected_value,
-    data=X_test.iloc[0],
+    data=X_test.to_numpy()[0],
     feature_names=feature_names
 ))
 ```
@@ -554,14 +557,14 @@ The weighting step uses a **kernel function**: perturbed samples that are close 
 import lime.lime_tabular
 
 explainer = lime.lime_tabular.LimeTabularExplainer(
-    X_train.values,
+    X_train.to_numpy(),
     feature_names=feature_names,
     class_names=['Not Churn', 'Churn'],
     mode='classification'
 )
 
 explanation = explainer.explain_instance(
-    X_test.iloc[0].values,
+    X_test.to_numpy()[0],
     model.predict_proba,
     num_features=10
 )

@@ -459,7 +459,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # Calculate VIF for each feature
 for i in range(X.shape[1]):
-    vif = variance_inflation_factor(X.values, i)
+    vif = variance_inflation_factor(X.to_numpy(), i)
     print(f"{feature_names[i]}: VIF = {vif:.2f}")
 ```
 
