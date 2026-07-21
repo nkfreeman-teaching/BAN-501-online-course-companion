@@ -1,0 +1,24 @@
+/* Custom styles for BAN 501 Course Companion */
+
+/* Center images by default */
+img {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* Code block styling */
+.highlight pre {
+  padding: 1em;
+}
+
+/* Table improvements */
+table {
+  width: 100%;
+}
+
+/* Give figures a little breathing room from surrounding text */
+.md-typeset img {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}

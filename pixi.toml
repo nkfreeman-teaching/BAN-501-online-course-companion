@@ -1,0 +1,76 @@
+[workspace]
+name = "ban501-online-course-companion"
+version = "1.0.0"
+description = "BAN 501: Predictive Modeling — Online Course Companion (MkDocs site + computation-verification suite)"
+authors = ["Nick Freeman <nick.freeman524@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+# ---------------------------------------------------------------------------
+# Two environments:
+#   * default (docs)   — lightweight; builds/serves the MkDocs site. All 4 OSes.
+#   * compute          — heavy; re-runs the 98 computation verifications and
+#                        regenerates figures. GPU/CUDA, so linux-64 only.
+# The feature-scoped `platforms` on [feature.compute] is intentional: the
+# workspace platform set (all 4) is a superset of every feature's platforms,
+# which pixi requires.
+# ---------------------------------------------------------------------------
+
+[feature.docs.dependencies]
+python = ">=3.12"
+mkdocs = ">=1.6"
+mkdocs-material = ">=9.5"
+
+[feature.docs.tasks]
+serve = { cmd = "mkdocs serve", description = "Serve the site locally with live reload (http://127.0.0.1:8000)" }
+build = { cmd = "mkdocs build --strict", description = "Build the static site (strict: fails on broken links/nav)" }
+
+# --- Heavy computation-verification environment (GPU, linux-64 only) --------
+# NOTE (pixi 0.72.0): `[system-requirements]` is DEPRECATED (pixi prints a warning
+# suggesting the inline form `platforms = [{ platform = "linux-64", cuda = "13.0" }]`).
+# However, that inline table-array syntax is NOT yet accepted in 0.72.0 — it errors
+# with "expected a string, found table". So we keep the `[system-requirements]` table
+# (works, warns only) until a pixi release actually supports the replacement.
+# Same applies to the BAN-501 root/notebooks tomls: do NOT migrate them yet.
+[feature.compute]
+platforms = ["linux-64"]
+
+[feature.compute.system-requirements]
+cuda = "13.0"
+
+[feature.compute.dependencies]
+python = ">=3.14.3,<3.15"
+pytorch-gpu = "*"
+torchvision = ">=0.26.0,<0.27"
+transformers = ">=5.2.0,<6"
+sentence-transformers = ">=2.0.0,<3"
+scikit-learn = ">=1.8.0,<2"
+xgboost = ">=3.2.0,<4"
+statsmodels = ">=0.14.6,<0.15"
+numpy = ">=2.4.2,<3"
+polars = ">=1.38.1,<2"
+pyarrow = ">=23.0.1,<24"
+matplotlib = ">=3.10.8,<4"
+seaborn = ">=0.13.2,<0.14"
+shap = ">=0.51.0,<0.52"
+lime = ">=0.2.0.1,<0.3"
+fairlearn = ">=0.12.0,<0.13"
+imbalanced-learn = ">=0.14.1,<0.15"
+umap-learn = ">=0.5.12,<0.6"
+gensim = ">=4.4.0,<5"
+prophet = ">=1.3.0,<2"
+optuna = ">=4.7.0,<5"
+marimo = ">=0.20.1,<0.21"
+tqdm = ">=4.67.3,<5"
+
+[feature.compute.pypi-dependencies]
+pacmap = ">=0.9.1, <0.10"
+pmdarima = ">=2.1.1, <3"
+
+[feature.compute.tasks]
+verify = { cmd = "python computations/verify_all.py", description = "Run all 98 computation verifications (Phase 3)" }
+figures = { cmd = "python computations/generate_figures.py", description = "Regenerate all figures into docs/assets/" }
+
+[environments]
+default = ["docs"]
+compute = ["compute"]
